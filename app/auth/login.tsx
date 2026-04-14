@@ -115,6 +115,15 @@ export default function Login() {
       </Text>
 
       <Button title={t("continue")} onPress={handleContinue} />
+
+      <TouchableOpacity
+        style={styles.guestButton}
+        onPress={() => router.replace("/(tabs)")}
+        accessibilityRole="button"
+        accessibilityLabel={t("login.continueAsGuest")}
+      >
+        <Text style={styles.guestButtonText}>{t("login.continueAsGuest")}</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -191,5 +200,17 @@ const styles = StyleSheet.create({
     marginBottom: vs(12),
     paddingLeft: s(12),
     fontFamily: FONTS.regular,
+  },
+  guestButton: {
+    marginTop: vs(16),
+    paddingVertical: vs(12),
+    paddingHorizontal: s(24),
+    alignSelf: "center",
+  },
+  guestButtonText: {
+    fontSize: ms(15),
+    fontFamily: FONTS.medium,
+    color: Colors.secondary100,
+    textDecorationLine: "underline",
   },
 });

@@ -28,10 +28,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "~/contexts/AuthContext";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
+import { useAuth } from "~/contexts/AuthContext";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 
 type User = {
   id: string;
@@ -129,6 +129,9 @@ export default function Account() {
       case "support":
         router.push("/account/support");
         break;
+      case "deleteAccount":
+        router.push("/account/delete_account" as any);
+        break;
       case "logout":
         handleLogout();
         break;
@@ -181,10 +184,17 @@ export default function Account() {
     "Rate Us": <Rating />,
     "About App": <About />,
     "Privacy Policy": (
-      <Ionicons name="document-text-outline" size={22} color={Colors.secondary} />
+      <Ionicons
+        name="document-text-outline"
+        size={22}
+        color={Colors.secondary}
+      />
     ),
     Language: <Language />,
     Support: <Support />,
+    "Delete Account": (
+      <Ionicons name="trash-outline" size={22} color={Colors.danger} />
+    ),
     Logout: <Logout />,
   };
   const menuItems = [
@@ -241,6 +251,13 @@ export default function Account() {
       extraRight: "chevron-forward",
     },
     {
+      icon: "Delete Account",
+      key: "deleteAccount",
+      title: t("account.deleteAccount"),
+      extraRight: "chevron-forward",
+      titleColor: Colors.danger,
+    },
+    {
       icon: "Logout",
       key: "logout",
       title: t("account.logout"),
@@ -258,7 +275,9 @@ export default function Account() {
         >
           <Header title={t("account.title")} homeScreen={false} />
           <View style={styles.guestContainer}>
-            <Text style={styles.guestText}>{t("accountGuest.loginRequired")}</Text>
+            <Text style={styles.guestText}>
+              {t("accountGuest.loginRequired")}
+            </Text>
             <Button
               title={t("accountGuest.loginButton")}
               onPress={() => router.push("/auth/login")}
@@ -328,7 +347,14 @@ export default function Account() {
               <View style={styles.row}>
                 <View style={styles.rowLeft}>
                   {iconMap[item.icon]}
-                  <Text style={styles.itemText}>{item.title}</Text>
+                  <Text
+                    style={[
+                      styles.itemText,
+                      item.titleColor ? { color: item.titleColor } : null,
+                    ]}
+                  >
+                    {item.title}
+                  </Text>
                 </View>
                 <View style={styles.rowRight}>
                   {item.right && (

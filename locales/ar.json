@@ -89,7 +89,8 @@
     "privacy": "سياسة الخصوصية",
     "consentPrefix": "بالمتابعة، فإنك توافق على",
     "consentSuffix": ".",
-    "invalidPhone": "يرجى إدخال رقم هاتف صحيح."
+    "invalidPhone": "يرجى إدخال رقم هاتف صحيح.",
+    "continueAsGuest": "متابعة كضيف"
   },
   "verify": {
     "headerTitle": "التحقق من الرمز",
@@ -172,7 +173,16 @@
     "assignedProvider": "مقدم خدمة معين",
     "waitingForProvider": "في انتظار مقدم الخدمة",
     "logoutErrorTitle": "خطأ في تسجيل الخروج",
-    "logoutErrorMessage": "حدث خطأ أثناء تسجيل الخروج. يرجى المحاولة مرة أخرى."
+    "logoutErrorMessage": "حدث خطأ أثناء تسجيل الخروج. يرجى المحاولة مرة أخرى.",
+    "deleteAccount": "حذف الحساب",
+    "deleteAccountTitle": "حذف الحساب",
+    "deleteAccountWarning": "هذا الإجراء دائم ولا يمكن التراجع عنه. سيتم حذف جميع بياناتك وحجوزاتك ومعلومات حسابك بشكل نهائي.",
+    "deleteAccountConfirm": "أفهم، احذف حسابي",
+    "deleteAccountCancel": "الاحتفاظ بحسابي",
+    "deleteAccountSuccess": "تم حذف حسابك بشكل دائم.",
+    "deleteAccountError": "فشل حذف الحساب. يرجى المحاولة مرة أخرى.",
+    "deleteAccountConfirmTitle": "هل أنت متأكد تماماً؟",
+    "deleteAccountConfirmMessage": "سيتم حذف حسابك بشكل دائم. لا يمكن التراجع عن هذا الإجراء."
   },
   "booking": {
     "bookservice": "حجز الخدمة",

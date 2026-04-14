@@ -89,7 +89,8 @@
     "privacy": "Privacy Policy",
     "consentPrefix": "By continuing, you agree to our",
     "consentSuffix": ".",
-    "invalidPhone": "Please enter a valid phone number."
+    "invalidPhone": "Please enter a valid phone number.",
+    "continueAsGuest": "Continue as Guest"
   },
   "verify": {
     "headerTitle": "OTP Verification",
@@ -172,7 +173,16 @@
     "assignedProvider": "Assigned Provider",
     "waitingForProvider": "Waiting for provider",
     "logoutErrorTitle": "Logout Error",
-    "logoutErrorMessage": "An error occurred during logout. Please try again."
+    "logoutErrorMessage": "An error occurred during logout. Please try again.",
+    "deleteAccount": "Delete Account",
+    "deleteAccountTitle": "Delete Account",
+    "deleteAccountWarning": "This action is permanent and cannot be undone. All your data, bookings, and account information will be permanently deleted.",
+    "deleteAccountConfirm": "I understand, delete my account",
+    "deleteAccountCancel": "Keep My Account",
+    "deleteAccountSuccess": "Your account has been permanently deleted.",
+    "deleteAccountError": "Failed to delete account. Please try again.",
+    "deleteAccountConfirmTitle": "Are you absolutely sure?",
+    "deleteAccountConfirmMessage": "Your account will be permanently deleted. This cannot be undone."
   },
   "booking": {
     "bookservice": "Book Service",
