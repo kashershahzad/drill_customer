@@ -35,7 +35,10 @@ export default function Welcome() {
         </View>
       </View>
       <View style={styles.footer}>
-        <Button title={t("welcomeScreen.browse")} onPress={() => router.replace("/(tabs)")} />
+        <Button
+          title={t("welcomeScreen.browse")}
+          onPress={() => router.replace("/(tabs)")}
+        />
         <TouchableOpacity
           style={styles.loginButton}
           onPress={() => router.push("/auth/login")}

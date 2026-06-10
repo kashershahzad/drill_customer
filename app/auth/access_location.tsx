@@ -1,7 +1,6 @@
 import Arrow from "@/assets/svgs/arrowLeft.svg";
 import Button from "@/components/button";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Device from "expo-device";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -9,50 +8,26 @@ import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "~/contexts/AuthContext";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
-import { apiCall } from "~/utils/api";
+import { useAuth } from "~/contexts/AuthContext";
 import {
-  getFCMToken,
+  registerDeviceWithBackend,
   requestFCMPermission,
   setupNotificationListeners,
 } from "~/utils/notification";
+import { ms, s, vs } from "~/utils/responsive";
 
 export default function AccessLocation() {
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
   const { setUser, getPendingBooking, clearPendingBooking } = useAuth();
-
-  const getDeviceInfo = async () => {
-    try {
-      let deviceModel = "unknown";
-      if (Device.modelName) {
-        deviceModel = Device.modelName;
-      }
-
-      return {
-        platform: Platform.OS || "",
-        model: deviceModel,
-      };
-    } catch (error) {
-      console.error("Error getting device info:", error);
-      return {
-        platform: Platform.OS || "",
-        model: "unknown",
-        brand: "unknown",
-        osVersion: "unknown",
-      };
-    }
-  };
 
   useEffect(() => {
     const setupNotifications = async () => {
@@ -61,29 +36,18 @@ export default function AccessLocation() {
         if (!userId) {
           return;
         }
+
+        await registerDeviceWithBackend(userId);
         const permissionGranted = await requestFCMPermission();
         if (permissionGranted) {
-          const token = await getFCMToken();
-          const deviceInfo = await getDeviceInfo();
-          const formData = new FormData();
-          formData.append("type", "update_noti");
-          formData.append("user_id", userId);
-          formData.append("devicePlatform", deviceInfo.platform);
-          formData.append("deviceRid", token || "");
-          formData.append("deviceModel", deviceInfo.model);
-          try {
-            const response = await apiCall(formData);
-          } catch (error) {
-            console.error("FCM registration failed:", error);
-          }
+          await registerDeviceWithBackend(userId);
         }
       } catch (error) {
         console.error("Error setting up notifications:", error);
       }
     };
 
-    const handleNotificationPress = (data: any) => {
-    };
+    const handleNotificationPress = (data: any) => {};
 
     setupNotifications();
 
@@ -102,7 +66,7 @@ export default function AccessLocation() {
       if (status !== "granted") {
         Alert.alert(
           t("accessLocation.permissionDenied"),
-          t("accessLocation.permissionRequired")
+          t("accessLocation.permissionRequired"),
         );
         setLoading(false);
         return;
@@ -122,12 +86,20 @@ export default function AccessLocation() {
         if (pending.entry === "serviceType") {
           router.replace({
             pathname: "/booking/serviceType",
-            params: { id: pending.id, name: pending.name, image: pending.image },
+            params: {
+              id: pending.id,
+              name: pending.name,
+              image: pending.image,
+            },
           });
         } else {
           router.replace({
             pathname: "/booking",
-            params: { id: pending.id, name: pending.name, image: pending.image },
+            params: {
+              id: pending.id,
+              name: pending.name,
+              image: pending.image,
+            },
           });
         }
       } else {
@@ -176,11 +148,7 @@ export default function AccessLocation() {
 
       <View style={styles.buttonContainer}>
         <Button
-          title={
-            loading
-              ? t("accessLocation.loading")
-              : t("continue")
-          }
+          title={loading ? t("accessLocation.loading") : t("continue")}
           onPress={handleLocation}
           disabled={loading}
         />

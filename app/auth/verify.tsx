@@ -11,6 +11,7 @@ import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { registerDeviceWithBackend } from "~/utils/notification";
 
 const RESEND_COOLDOWN_SEC = 60;
 
@@ -72,6 +73,7 @@ export default function Verify() {
       if (response.result) {
         await AsyncStorage.setItem("user_num_id", response?.user?.id);
         await AsyncStorage.setItem("user_name", response?.user?.name);
+        registerDeviceWithBackend(userId);
         setTimeout(() => router.push("/auth/verified"), 500);
       } else {
         setError(t("verify.verificationFailed"));
