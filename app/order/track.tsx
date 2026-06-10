@@ -53,6 +53,40 @@ const parseCoordinates = (
   return { latitude, longitude };
 };
 
+const MAP_FIT_PADDING = {
+  top: 140,
+  right: 80,
+  bottom: 380,
+  left: 80,
+};
+
+const getRegionForCoordinates = (points: MapCoordinate[]) => {
+  const lats = points.map((point) => point.latitude);
+  const lngs = points.map((point) => point.longitude);
+
+  let minLat = Math.min(...lats);
+  let maxLat = Math.max(...lats);
+  let minLng = Math.min(...lngs);
+  let maxLng = Math.max(...lngs);
+
+  const latSpan = Math.max(maxLat - minLat, 0.008);
+  const lngSpan = Math.max(maxLng - minLng, 0.008);
+  const latPad = latSpan * 0.45;
+  const lngPad = lngSpan * 0.45;
+
+  minLat -= latPad;
+  maxLat += latPad;
+  minLng -= lngPad;
+  maxLng += lngPad;
+
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: Math.max(maxLat - minLat, 0.05),
+    longitudeDelta: Math.max(maxLng - minLng, 0.05),
+  };
+};
+
 export default function Track() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<string>("OnTheWay");
@@ -198,6 +232,53 @@ export default function Track() {
     };
   }, [location]);
 
+  const mapInitialRegion = useMemo(() => {
+    if (providerLocation && customerLocation) {
+      return getRegionForCoordinates([providerLocation, customerLocation]);
+    }
+
+    if (customerLocation) {
+      return {
+        ...customerLocation,
+        latitudeDelta: 0.08,
+        longitudeDelta: 0.08,
+      };
+    }
+
+    if (providerLocation) {
+      return {
+        ...providerLocation,
+        latitudeDelta: 0.08,
+        longitudeDelta: 0.08,
+      };
+    }
+
+    return {
+      latitude: 24.7136,
+      longitude: 46.6753,
+      latitudeDelta: 0.1,
+      longitudeDelta: 0.1,
+    };
+  }, [providerLocation, customerLocation]);
+
+  const fitMapToPoints = useCallback((points: MapCoordinate[]) => {
+    if (!mapRef.current || points.length < 2) return;
+
+    mapRef.current.fitToCoordinates(points, {
+      edgePadding: MAP_FIT_PADDING,
+      animated: true,
+    });
+  }, []);
+
+  const fitMapToBothMarkers = useCallback(() => {
+    if (!providerLocation || !customerLocation) return;
+    fitMapToPoints([providerLocation, customerLocation]);
+  }, [providerLocation, customerLocation, fitMapToPoints]);
+
+  const handleMapReady = useCallback(() => {
+    fitMapToBothMarkers();
+  }, [fitMapToBothMarkers]);
+
   useEffect(() => {
     if (orderId && !isOrderLoaded) {
       getOrderDetails();
@@ -279,24 +360,17 @@ export default function Track() {
   }, []);
 
   useEffect(() => {
-    if (!providerLocation) return;
+    if (!providerLocation || !customerLocation) return;
 
-    const mapPoints = [providerLocation, customerLocation];
-    setRouteCoordinates(mapPoints);
+    const timers = [300, 1000, 1800].map((delay) =>
+      setTimeout(fitMapToBothMarkers, delay),
+    );
 
-    if (!hasFittedMapRef.current) {
-      hasFittedMapRef.current = true;
-      setTimeout(() => {
-        mapRef.current?.fitToCoordinates(mapPoints, {
-          edgePadding: { top: 80, right: 60, bottom: 280, left: 60 },
-          animated: true,
-        });
-      }, 400);
-    }
-  }, [providerLocation, customerLocation]);
+    return () => timers.forEach(clearTimeout);
+  }, [providerLocation, customerLocation, orderId, fitMapToBothMarkers]);
 
   useEffect(() => {
-    if (!providerLocation || USE_TEST_MAP_LOCATIONS) return;
+    if (!providerLocation || !customerLocation) return;
 
     let cancelled = false;
 
@@ -306,11 +380,27 @@ export default function Track() {
           providerLocation,
           customerLocation,
         );
-        if (!cancelled && routeCoords.length > 2) {
-          setRouteCoordinates(routeCoords);
-        }
+
+        if (cancelled) return;
+
+        setRouteCoordinates(routeCoords);
+
+        const fitPoints =
+          routeCoords.length > 2
+            ? routeCoords
+            : [providerLocation, customerLocation];
+
+        setTimeout(() => {
+          if (!cancelled) {
+            fitMapToPoints(fitPoints);
+          }
+        }, 500);
       } catch (error) {
         console.error("Error loading route:", error);
+        if (!cancelled) {
+          setRouteCoordinates([providerLocation, customerLocation]);
+          fitMapToBothMarkers();
+        }
       }
     };
 
@@ -319,7 +409,13 @@ export default function Track() {
     return () => {
       cancelled = true;
     };
-  }, [providerLocation, customerLocation]);
+  }, [
+    providerLocation,
+    customerLocation,
+    orderId,
+    fitMapToBothMarkers,
+    fitMapToPoints,
+  ]);
 
   if (isLoading && !errorMsg && !order) {
     return (
@@ -348,58 +444,55 @@ export default function Track() {
           />
         </View>
       ) : (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={{
-            latitude: providerLocation?.latitude ?? customerLocation.latitude,
-            longitude:
-              providerLocation?.longitude ?? customerLocation.longitude,
-            latitudeDelta: 0.08,
-            longitudeDelta: 0.08,
-          }}
-          showsUserLocation={!USE_TEST_MAP_LOCATIONS}
-          showsMyLocationButton={false}
-        >
-          {providerLocation && (
+        <View style={{ height: "70%" }}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            initialRegion={mapInitialRegion}
+            showsUserLocation={!USE_TEST_MAP_LOCATIONS}
+            showsMyLocationButton={false}
+            onMapReady={handleMapReady}
+          >
+            {providerLocation && (
+              <Marker
+                coordinate={providerLocation}
+                title={t("order.onTheWay")}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={styles.providerMarkerContainer}>
+                  <Ionicons name="navigate" size={10} color="#fff" />
+                </View>
+              </Marker>
+            )}
+
             <Marker
-              coordinate={providerLocation}
-              title={t("order.onTheWay")}
-              anchor={{ x: 0.5, y: 0.5 }}
+              coordinate={customerLocation}
+              title={order?.user?.name || t("order.customer")}
+              description={
+                order?.address ||
+                order?.user?.address ||
+                t("order.customerLocation")
+              }
             >
-              <View style={styles.providerMarkerContainer}>
-                <Ionicons name="navigate" size={10} color="#fff" />
+              <View style={styles.providerMarkerContainer2}>
+                <Ionicons name="person" size={10} color="#fff" />
               </View>
             </Marker>
-          )}
 
-          <Marker
-            coordinate={customerLocation}
-            title={order?.user?.name || t("order.customer")}
-            description={
-              order?.address ||
-              order?.user?.address ||
-              t("order.customerLocation")
-            }
-          >
-            <View style={styles.providerMarkerContainer2}>
-              <Ionicons name="person" size={10} color="#fff" />
-            </View>
-          </Marker>
-
-          {routeCoordinates.length > 1 && (
-            <Polyline
-              coordinates={routeCoordinates}
-              strokeWidth={5}
-              strokeColor={Colors.primary}
-              geodesic
-              lineCap="round"
-              lineJoin="round"
-              zIndex={1}
-            />
-          )}
-        </MapView>
+            {routeCoordinates.length > 1 && (
+              <Polyline
+                coordinates={routeCoordinates}
+                strokeWidth={5}
+                strokeColor={Colors.primary}
+                geodesic
+                lineCap="round"
+                lineJoin="round"
+                zIndex={1}
+              />
+            )}
+          </MapView>
+        </View>
       )}
 
       {/* Header */}
