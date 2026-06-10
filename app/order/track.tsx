@@ -302,7 +302,10 @@ export default function Track() {
 
     const loadRoute = async () => {
       try {
-        const routeCoords = await fetchRoute(providerLocation, customerLocation);
+        const routeCoords = await fetchRoute(
+          providerLocation,
+          customerLocation,
+        );
         if (!cancelled && routeCoords.length > 2) {
           setRouteCoordinates(routeCoords);
         }
@@ -350,8 +353,7 @@ export default function Track() {
           style={styles.map}
           provider={PROVIDER_GOOGLE}
           initialRegion={{
-            latitude:
-              providerLocation?.latitude ?? customerLocation.latitude,
+            latitude: providerLocation?.latitude ?? customerLocation.latitude,
             longitude:
               providerLocation?.longitude ?? customerLocation.longitude,
             latitudeDelta: 0.08,
@@ -367,7 +369,7 @@ export default function Track() {
               anchor={{ x: 0.5, y: 0.5 }}
             >
               <View style={styles.providerMarkerContainer}>
-                <Ionicons name="navigate" size={18} color="#fff" />
+                <Ionicons name="navigate" size={10} color="#fff" />
               </View>
             </Marker>
           )}
@@ -375,10 +377,14 @@ export default function Track() {
           <Marker
             coordinate={customerLocation}
             title={order?.user?.name || t("order.customer")}
-            description={order?.address || order?.user?.address || t("order.customerLocation")}
+            description={
+              order?.address ||
+              order?.user?.address ||
+              t("order.customerLocation")
+            }
           >
-            <View style={styles.markerContainer}>
-              <Ionicons name="person" size={20} color="#fff" />
+            <View style={styles.providerMarkerContainer2}>
+              <Ionicons name="person" size={10} color="#fff" />
             </View>
           </Marker>
 
@@ -586,13 +592,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
-  markerContainer: {
-    backgroundColor: Colors.primary,
-    borderRadius: ms(20),
-    padding: s(8),
-    borderWidth: 2,
-    borderColor: Colors.white,
-  },
+  // markerContainer: {
+  //   backgroundColor: Colors.primary,
+  //   borderRadius: ms(20),
+  //   padding: s(8),
+  //   borderWidth: 2,
+  //   borderColor: Colors.white,
+  // },
   providerMarkerContainer: {
     backgroundColor: Colors.secondary,
     borderRadius: ms(20),
@@ -600,6 +606,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.white,
   },
+  providerMarkerContainer2: {
+    backgroundColor: Colors.primary,
+    borderRadius: ms(20),
+    padding: s(8),
+    borderWidth: 2,
+    borderColor: Colors.white,
+  },
+
   noOrderContainer: {
     padding: s(18),
     alignItems: "center",
