@@ -108,7 +108,7 @@ const Wallet = () => {
             <Text style={styles.textSecondary}>{t("wallet.availableBalance")}</Text>
             <Text style={styles.availableBalance}>{t("wallet.sar")} 13,455.23</Text>
           </View>
-          <View style={{ width: "20%" }}>
+          <View style={{ width: "30%" }}>
             <Button title={t("wallet.add")} onPress={handleAdd} variant="secondary" />
           </View>
         </View>

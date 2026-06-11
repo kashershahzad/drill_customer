@@ -14,8 +14,8 @@ import {
 } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { OrderType } from "~/types/dataTypes";
+import { ms, s, vs } from "~/utils/responsive";
 import Button from "./button";
 import DashedSeparator from "./dashed_seprator";
 
@@ -105,6 +105,8 @@ export default function ProviderCard({ order }: ProviderCardProps) {
           Icon={<Call />}
           fullWidth={false}
           width={"30%"}
+          style={{ height: vs(36) }}
+          textSize={ms(14)}
           title={t("call")}
           variant="secondary"
           onPress={handleCall}
@@ -113,6 +115,8 @@ export default function ProviderCard({ order }: ProviderCardProps) {
           Icon={<Message />}
           fullWidth={false}
           width={"30%"}
+          style={{ height: vs(36) }}
+          textSize={ms(14)}
           title={t("chat")}
           variant="primary"
           onPress={handleChat}
@@ -123,6 +127,8 @@ export default function ProviderCard({ order }: ProviderCardProps) {
           Icon={<Track />}
           fullWidth={false}
           width={"30%"}
+          style={{ height: vs(36) }}
+          textSize={ms(14)}
           title={t("track")}
           variant="secondary"
           onPress={handleTrack}

@@ -96,7 +96,7 @@ export default function Button({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: vs(44),
+    minHeight: vs(28),
     paddingVertical: vs(14),
     borderRadius: ms(10),
     alignItems: "center",

@@ -20,9 +20,27 @@ interface OrderDetailsProps {
   order: OrderType;
 }
 
+const DEMO_PROVIDER: NonNullable<OrderType["provider"]> = {
+  id: "demo-provider-1",
+  name: "Ahmed Al-Rashid",
+  image: "user.png",
+  phone: "+966500000000",
+  rating: 4.8,
+  reviewscount: 124,
+};
+
 export default function OrderDetails({ order }: OrderDetailsProps) {
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const { t } = useTranslation();
+
+  const hasProvider = !!order.provider;
+  const providerOrder: OrderType = hasProvider
+    ? order
+    : {
+        ...order,
+        status: order.status || "accepted",
+        provider: DEMO_PROVIDER,
+      };
 
   return (
     <ScrollView
@@ -58,8 +76,8 @@ export default function OrderDetails({ order }: OrderDetailsProps) {
         {t("booking.aboutserviceprovider")}
       </Text>
 
-      {order.provider ? (
-        <ProviderCard order={order} />
+      {hasProvider || __DEV__ ? (
+        <ProviderCard order={providerOrder} />
       ) : (
         <View style={styles.noProviderContainer}>
           <Text style={styles.noProviderText}>{t("booking.noprovider")}</Text>
