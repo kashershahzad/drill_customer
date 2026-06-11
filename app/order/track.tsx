@@ -22,10 +22,70 @@ import Header from "~/components/header";
 import ProviderCard from "~/components/provider_card";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { OrderType } from "~/types/dataTypes";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 type LocationStateType = Location.LocationObject;
+type MapCoordinate = { latitude: number; longitude: number };
+
+// Dev testing: fixed Faisalabad coords so map + polyline always show on phone
+const USE_TEST_MAP_LOCATIONS = __DEV__;
+const TEST_PROVIDER_LOCATION: MapCoordinate = {
+  latitude: 31.4174815,
+  longitude: 73.104439,
+};
+const TEST_CUSTOMER_LOCATION: MapCoordinate = {
+  latitude: 31.39541,
+  longitude: 73.111622,
+};
+
+const parseCoordinates = (
+  lat?: string | number,
+  lng?: string | number,
+): MapCoordinate | null => {
+  if (lat == null || lng == null || lat === "" || lng === "") return null;
+
+  const latitude = typeof lat === "number" ? lat : parseFloat(lat);
+  const longitude = typeof lng === "number" ? lng : parseFloat(lng);
+
+  if (isNaN(latitude) || isNaN(longitude)) return null;
+
+  return { latitude, longitude };
+};
+
+const MAP_FIT_PADDING = {
+  top: 140,
+  right: 80,
+  bottom: 380,
+  left: 80,
+};
+
+const getRegionForCoordinates = (points: MapCoordinate[]) => {
+  const lats = points.map((point) => point.latitude);
+  const lngs = points.map((point) => point.longitude);
+
+  let minLat = Math.min(...lats);
+  let maxLat = Math.max(...lats);
+  let minLng = Math.min(...lngs);
+  let maxLng = Math.max(...lngs);
+
+  const latSpan = Math.max(maxLat - minLat, 0.008);
+  const lngSpan = Math.max(maxLng - minLng, 0.008);
+  const latPad = latSpan * 0.45;
+  const lngPad = lngSpan * 0.45;
+
+  minLat -= latPad;
+  maxLat += latPad;
+  minLng -= lngPad;
+  maxLng += lngPad;
+
+  return {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: Math.max(maxLat - minLat, 0.05),
+    longitudeDelta: Math.max(maxLng - minLng, 0.05),
+  };
+};
 
 export default function Track() {
   const { t } = useTranslation();
@@ -43,16 +103,17 @@ export default function Track() {
   const params = useLocalSearchParams();
   const orderId = useMemo(
     () => params.orderId?.toString() || "",
-    [params.orderId]
+    [params.orderId],
   );
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
-    null
+    null,
   );
+  const hasFittedMapRef = useRef(false);
   const GOOGLE_MAPS_API_KEY = "AIzaSyAQiilQ_i4LRPFyMhfLB5ZT3UGMTIxqL0Y";
 
   // Decode Google polyline to coordinates
   const decodePolyline = (
-    encoded: string
+    encoded: string,
   ): { latitude: number; longitude: number }[] => {
     const poly = [];
     let index = 0;
@@ -93,7 +154,7 @@ export default function Track() {
   // Fetch route from Google Directions API
   const fetchRoute = async (
     origin: { latitude: number; longitude: number },
-    destination: { latitude: number; longitude: number }
+    destination: { latitude: number; longitude: number },
   ) => {
     try {
       const originStr = `${origin.latitude},${origin.longitude}`;
@@ -146,33 +207,87 @@ export default function Track() {
     }
   }, [orderId, isOrderLoaded]);
 
-  // Get the customer location from the order
-  const customerLocation = useMemo(() => {
-    // Try order.lat/lng first (customer's service location)
-    if (order?.lat && order?.lng) {
-      const lat = parseFloat(order.lat);
-      const lng = parseFloat(order.lng);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        return { latitude: lat, longitude: lng };
-      }
+  const customerLocation = useMemo((): MapCoordinate => {
+    if (USE_TEST_MAP_LOCATIONS) {
+      return TEST_CUSTOMER_LOCATION;
     }
 
-    if (order?.user?.lat && order?.user?.lng) {
-      const lat = parseFloat(order.user.lat);
-      const lng = parseFloat(order.user.lng);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        return { latitude: lat, longitude: lng };
-      }
-    }
+    const fromOrder =
+      parseCoordinates(order?.lat, order?.lng) ||
+      parseCoordinates(order?.user?.lat, order?.user?.lng);
 
-    return { latitude: 24.7136, longitude: 46.6753 }; // Riyadh default
+    return fromOrder ?? TEST_CUSTOMER_LOCATION;
   }, [order]);
+
+  const providerLocation = useMemo((): MapCoordinate | null => {
+    if (USE_TEST_MAP_LOCATIONS) {
+      return TEST_PROVIDER_LOCATION;
+    }
+
+    if (!location?.coords) return null;
+
+    return {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+  }, [location]);
+
+  const mapInitialRegion = useMemo(() => {
+    if (providerLocation && customerLocation) {
+      return getRegionForCoordinates([providerLocation, customerLocation]);
+    }
+
+    if (customerLocation) {
+      return {
+        ...customerLocation,
+        latitudeDelta: 0.08,
+        longitudeDelta: 0.08,
+      };
+    }
+
+    if (providerLocation) {
+      return {
+        ...providerLocation,
+        latitudeDelta: 0.08,
+        longitudeDelta: 0.08,
+      };
+    }
+
+    return {
+      latitude: 24.7136,
+      longitude: 46.6753,
+      latitudeDelta: 0.1,
+      longitudeDelta: 0.1,
+    };
+  }, [providerLocation, customerLocation]);
+
+  const fitMapToPoints = useCallback((points: MapCoordinate[]) => {
+    if (!mapRef.current || points.length < 2) return;
+
+    mapRef.current.fitToCoordinates(points, {
+      edgePadding: MAP_FIT_PADDING,
+      animated: true,
+    });
+  }, []);
+
+  const fitMapToBothMarkers = useCallback(() => {
+    if (!providerLocation || !customerLocation) return;
+    fitMapToPoints([providerLocation, customerLocation]);
+  }, [providerLocation, customerLocation, fitMapToPoints]);
+
+  const handleMapReady = useCallback(() => {
+    fitMapToBothMarkers();
+  }, [fitMapToBothMarkers]);
 
   useEffect(() => {
     if (orderId && !isOrderLoaded) {
       getOrderDetails();
     }
   }, [orderId, getOrderDetails, isOrderLoaded]);
+
+  useEffect(() => {
+    hasFittedMapRef.current = false;
+  }, [orderId]);
 
   useEffect(() => {
     // Animate bottom sheet
@@ -185,6 +300,11 @@ export default function Track() {
     let isMounted = true;
 
     const setupLocationTracking = async () => {
+      if (USE_TEST_MAP_LOCATIONS) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
@@ -199,7 +319,6 @@ export default function Track() {
         let currentLocation = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-
         if (isMounted) {
           setLocation(currentLocation);
         }
@@ -215,7 +334,7 @@ export default function Track() {
             if (isMounted) {
               setLocation(newLocation);
             }
-          }
+          },
         );
 
         // Store the subscription reference
@@ -241,39 +360,62 @@ export default function Track() {
   }, []);
 
   useEffect(() => {
-    if (location && customerLocation) {
-      const startPoint = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      };
+    if (!providerLocation || !customerLocation) return;
 
-      // Fetch actual route through roads from Google Directions API
-      const loadRoute = async () => {
-        try {
-          const routeCoords = await fetchRoute(startPoint, customerLocation);
-          setRouteCoordinates(routeCoords);
+    const timers = [300, 1000, 1800].map((delay) =>
+      setTimeout(fitMapToBothMarkers, delay),
+    );
 
-          // Fit map to show the entire route
-          setTimeout(() => {
-            if (mapRef.current && routeCoords.length > 0) {
-              mapRef.current.fitToCoordinates(routeCoords, {
-                edgePadding: { top: 50, right: 50, bottom: 250, left: 50 },
-                animated: true,
-              });
-            }
-          }, 500);
-        } catch (error) {
-          console.error("Error loading route:", error);
-          // Fallback to straight line
-          setRouteCoordinates([startPoint, customerLocation]);
-        } finally {
-          setIsLoading(false);
+    return () => timers.forEach(clearTimeout);
+  }, [providerLocation, customerLocation, orderId, fitMapToBothMarkers]);
+
+  useEffect(() => {
+    if (!providerLocation || !customerLocation) return;
+
+    let cancelled = false;
+
+    const loadRoute = async () => {
+      try {
+        const routeCoords = await fetchRoute(
+          providerLocation,
+          customerLocation,
+        );
+
+        if (cancelled) return;
+
+        setRouteCoordinates(routeCoords);
+
+        const fitPoints =
+          routeCoords.length > 2
+            ? routeCoords
+            : [providerLocation, customerLocation];
+
+        setTimeout(() => {
+          if (!cancelled) {
+            fitMapToPoints(fitPoints);
+          }
+        }, 500);
+      } catch (error) {
+        console.error("Error loading route:", error);
+        if (!cancelled) {
+          setRouteCoordinates([providerLocation, customerLocation]);
+          fitMapToBothMarkers();
         }
-      };
+      }
+    };
 
-      loadRoute();
-    }
-  }, [location, customerLocation]);
+    loadRoute();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    providerLocation,
+    customerLocation,
+    orderId,
+    fitMapToBothMarkers,
+    fitMapToPoints,
+  ]);
 
   if (isLoading && !errorMsg && !order) {
     return (
@@ -302,39 +444,55 @@ export default function Track() {
           />
         </View>
       ) : (
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          provider={PROVIDER_GOOGLE}
-          initialRegion={{
-            latitude: location?.coords.latitude || customerLocation.latitude,
-            longitude: location?.coords.longitude || customerLocation.longitude,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-          showsUserLocation={true}
-          showsMyLocationButton={false}
-        >
-          {/* Customer marker */}
-          <Marker
-            coordinate={customerLocation}
-            title={order?.user?.name || t("order.customer")}
-            description={order?.user?.address || t("order.customerLocation")}
+        <View style={{ height: "70%" }}>
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_GOOGLE}
+            initialRegion={mapInitialRegion}
+            showsUserLocation={!USE_TEST_MAP_LOCATIONS}
+            showsMyLocationButton={false}
+            onMapReady={handleMapReady}
           >
-            <View style={styles.markerContainer}>
-              <Ionicons name="person" size={20} color="#fff" />
-            </View>
-          </Marker>
+            {providerLocation && (
+              <Marker
+                coordinate={providerLocation}
+                title={t("order.onTheWay")}
+                anchor={{ x: 0.5, y: 0.5 }}
+              >
+                <View style={styles.providerMarkerContainer}>
+                  <Ionicons name="navigate" size={10} color="#fff" />
+                </View>
+              </Marker>
+            )}
 
-          {/* Route line */}
-          {routeCoordinates.length > 0 && (
-            <Polyline
-              coordinates={routeCoordinates}
-              strokeWidth={3}
-              strokeColor={Colors.primary}
-            />
-          )}
-        </MapView>
+            <Marker
+              coordinate={customerLocation}
+              title={order?.user?.name || t("order.customer")}
+              description={
+                order?.address ||
+                order?.user?.address ||
+                t("order.customerLocation")
+              }
+            >
+              <View style={styles.providerMarkerContainer2}>
+                <Ionicons name="person" size={10} color="#fff" />
+              </View>
+            </Marker>
+
+            {routeCoordinates.length > 1 && (
+              <Polyline
+                coordinates={routeCoordinates}
+                strokeWidth={5}
+                strokeColor={Colors.primary}
+                geodesic
+                lineCap="round"
+                lineJoin="round"
+                zIndex={1}
+              />
+            )}
+          </MapView>
+        </View>
       )}
 
       {/* Header */}
@@ -408,36 +566,177 @@ export default function Track() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   map: { ...StyleSheet.absoluteFillObject },
-  fullScreenLoading: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Colors.white },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: { marginTop: vs(10), fontSize: ms(15), fontFamily: FONTS.regular, color: Colors.primary },
-  errorContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: s(18) },
-  errorText: { fontSize: ms(15), fontFamily: FONTS.regular, color: "red", textAlign: "center", marginBottom: vs(18) },
-  header: { paddingTop: vs(50), paddingHorizontal: s(16) },
-  statusContainer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: s(14), backgroundColor: Colors.gray100, borderRadius: ms(14), marginVertical: vs(16) },
-  statusItem: { alignItems: "center" },
-  statusText: { fontSize: ms(11), fontFamily: FONTS.regular, color: Colors.gray300, textAlign: "center", marginTop: vs(12) },
-  statusText2: { fontSize: ms(11), fontFamily: FONTS.regular, color: Colors.gray300, textAlign: "center" },
-  activeStatusText: { color: Colors.primary, fontFamily: FONTS.semiBold },
-  line: { height: vs(3), flex: 1, borderRadius: 99, backgroundColor: Colors.primary, marginHorizontal: s(7) },
-  lineInactive: { height: vs(3), flex: 1, borderRadius: 99, backgroundColor: Colors.primary100, marginHorizontal: s(7) },
-  contentWrapper: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    backgroundColor: Colors.white, borderTopLeftRadius: ms(35), borderTopRightRadius: ms(35),
-    width: "100%", elevation: 5,
-    shadowColor: "#000", shadowOffset: { width: 0, height: -3 }, shadowOpacity: 0.1, shadowRadius: 6,
-    overflow: "hidden", maxHeight: "60%", paddingBottom: vs(40),
+  fullScreenLoading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: Colors.white,
   },
-  contentHeader: { backgroundColor: Colors.primary, paddingVertical: vs(14), flexDirection: "row", justifyContent: "center", alignItems: "center", gap: s(6) },
-  title: { color: Colors.white, fontSize: ms(12), fontFamily: FONTS.semiBold, textAlign: "center", maxWidth: "80%" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: {
+    marginTop: vs(10),
+    fontSize: ms(15),
+    fontFamily: FONTS.regular,
+    color: Colors.primary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: s(18),
+  },
+  errorText: {
+    fontSize: ms(15),
+    fontFamily: FONTS.regular,
+    color: "red",
+    textAlign: "center",
+    marginBottom: vs(18),
+  },
+  header: { paddingTop: vs(50), paddingHorizontal: s(16) },
+  statusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: s(14),
+    backgroundColor: Colors.gray100,
+    borderRadius: ms(14),
+    marginVertical: vs(16),
+  },
+  statusItem: { alignItems: "center" },
+  statusText: {
+    fontSize: ms(11),
+    fontFamily: FONTS.regular,
+    color: Colors.gray300,
+    textAlign: "center",
+    marginTop: vs(12),
+  },
+  statusText2: {
+    fontSize: ms(11),
+    fontFamily: FONTS.regular,
+    color: Colors.gray300,
+    textAlign: "center",
+  },
+  activeStatusText: { color: Colors.primary, fontFamily: FONTS.semiBold },
+  line: {
+    height: vs(3),
+    flex: 1,
+    borderRadius: 99,
+    backgroundColor: Colors.primary,
+    marginHorizontal: s(7),
+  },
+  lineInactive: {
+    height: vs(3),
+    flex: 1,
+    borderRadius: 99,
+    backgroundColor: Colors.primary100,
+    marginHorizontal: s(7),
+  },
+  contentWrapper: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: ms(35),
+    borderTopRightRadius: ms(35),
+    width: "100%",
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    overflow: "hidden",
+    maxHeight: "60%",
+    paddingBottom: vs(40),
+  },
+  contentHeader: {
+    backgroundColor: Colors.primary,
+    paddingVertical: vs(14),
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: s(6),
+  },
+  title: {
+    color: Colors.white,
+    fontSize: ms(12),
+    fontFamily: FONTS.semiBold,
+    textAlign: "center",
+    maxWidth: "80%",
+  },
   content: { paddingHorizontal: s(16) },
-  buttonContainer: { padding: s(14), paddingBottom: Platform.OS === "ios" ? vs(30) : vs(16) },
-  centerButtonContainer: { position: "absolute", bottom: vs(300), right: s(20), zIndex: 10 },
-  centerButton: { backgroundColor: "white", padding: s(10), borderRadius: ms(30), elevation: 3, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84 },
-  markerContainer: { backgroundColor: Colors.primary, borderRadius: ms(20), padding: s(8), borderWidth: 2, borderColor: Colors.white },
-  noOrderContainer: { padding: s(18), alignItems: "center", justifyContent: "center", backgroundColor: Colors.gray100, borderRadius: ms(8) },
-  noOrderText: { fontSize: ms(15), fontFamily: FONTS.regular, color: Colors.gray300 },
-  arrived: { width: "100%", alignItems: "center", paddingHorizontal: s(16), paddingVertical: vs(20), gap: vs(18) },
-  arrivedTitle: { fontSize: ms(21), color: Colors.secondary, fontFamily: FONTS.bold, marginTop: vs(10) },
-  arrivedText: { fontSize: ms(16), fontFamily: FONTS.regular, paddingHorizontal: s(16), marginBottom: vs(10), textAlign: "center" },
+  buttonContainer: {
+    padding: s(14),
+    paddingBottom: Platform.OS === "ios" ? vs(30) : vs(16),
+  },
+  centerButtonContainer: {
+    position: "absolute",
+    bottom: vs(300),
+    right: s(20),
+    zIndex: 10,
+  },
+  centerButton: {
+    backgroundColor: "white",
+    padding: s(10),
+    borderRadius: ms(30),
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  // markerContainer: {
+  //   backgroundColor: Colors.primary,
+  //   borderRadius: ms(20),
+  //   padding: s(8),
+  //   borderWidth: 2,
+  //   borderColor: Colors.white,
+  // },
+  providerMarkerContainer: {
+    backgroundColor: Colors.secondary,
+    borderRadius: ms(20),
+    padding: s(8),
+    borderWidth: 2,
+    borderColor: Colors.white,
+  },
+  providerMarkerContainer2: {
+    backgroundColor: Colors.primary,
+    borderRadius: ms(20),
+    padding: s(8),
+    borderWidth: 2,
+    borderColor: Colors.white,
+  },
+
+  noOrderContainer: {
+    padding: s(18),
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.gray100,
+    borderRadius: ms(8),
+  },
+  noOrderText: {
+    fontSize: ms(15),
+    fontFamily: FONTS.regular,
+    color: Colors.gray300,
+  },
+  arrived: {
+    width: "100%",
+    alignItems: "center",
+    paddingHorizontal: s(16),
+    paddingVertical: vs(20),
+    gap: vs(18),
+  },
+  arrivedTitle: {
+    fontSize: ms(21),
+    color: Colors.secondary,
+    fontFamily: FONTS.bold,
+    marginTop: vs(10),
+  },
+  arrivedText: {
+    fontSize: ms(16),
+    fontFamily: FONTS.regular,
+    paddingHorizontal: s(16),
+    marginBottom: vs(10),
+    textAlign: "center",
+  },
 });

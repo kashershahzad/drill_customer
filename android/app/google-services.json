@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "891074350960",
+    "project_id": "drill-app-3a0c1",
+    "storage_bucket": "drill-app-3a0c1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:891074350960:android:ef66fdce6a68e3240d89b5",
+        "android_client_info": {
+          "package_name": "sa.com.drill.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAEs9s81RDwHK2LETpCCwIO60862jYWXXY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

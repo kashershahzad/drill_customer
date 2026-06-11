@@ -14,11 +14,12 @@ import {
 } from "react-native";
 import ModalSelector from "react-native-modal-selector";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "~/contexts/AuthContext";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
+import { useAuth } from "~/contexts/AuthContext";
 import { apiCall } from "~/utils/api";
+import { registerDeviceWithBackend } from "~/utils/notification";
+import { ms, s, vs } from "~/utils/responsive";
 
 type CountryCode = { key: number; label: string; value: string };
 
@@ -46,17 +47,22 @@ export default function Login() {
     try {
       const pendingBooking = await AsyncStorage.getItem(PENDING_BOOKING_KEY);
       await AsyncStorage.clear();
-      if (pendingBooking) await AsyncStorage.setItem(PENDING_BOOKING_KEY, pendingBooking);
+      if (pendingBooking)
+        await AsyncStorage.setItem(PENDING_BOOKING_KEY, pendingBooking);
 
       const formData = new FormData();
       formData.append("type", "register_phone");
       formData.append("phone", `${countryCode.value}${cleanedNumber}`);
       formData.append("user_type", "user");
       const response = await apiCall(formData);
+      console.log("response", response);
       if (response.result) {
         await AsyncStorage.setItem("user_id", response.user_id);
         await AsyncStorage.setItem("user_type", response.user_type);
         await setUser(response.user_id);
+        console.log("📲 Login: sending update_noti for user_id:", response.user_id);
+        await registerDeviceWithBackend(response.user_id);
+        console.log("📲 Login: update_noti request completed");
         router.push("/auth/verify");
       } else {
         setError(response.message || "Login failed.");
@@ -71,7 +77,12 @@ export default function Login() {
       <Text style={styles.title}>{t("welcome")}</Text>
       <Text style={styles.subtitle}>{t("login.subtitle")}</Text>
 
-      <View style={[styles.inputContainer, error ? styles.inputContainerError : null]}>
+      <View
+        style={[
+          styles.inputContainer,
+          error ? styles.inputContainerError : null,
+        ]}
+      >
         <TouchableOpacity
           onPress={() => modalRef.current.open()}
           style={styles.countrySelector}
@@ -108,7 +119,10 @@ export default function Login() {
 
       <Text style={styles.consentText}>
         {t("login.consentPrefix")}{" "}
-        <Text style={styles.privacyLink} onPress={() => router.push("/auth/privacy")}>
+        <Text
+          style={styles.privacyLink}
+          onPress={() => router.push("/auth/privacy")}
+        >
           {t("login.privacy")}
         </Text>
         {t("login.consentSuffix")}
