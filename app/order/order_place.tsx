@@ -17,7 +17,6 @@ import Popup from "~/components/popup";
 import { useToast } from "~/components/ToastProvider";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { OrderType } from "~/types/dataTypes";
 import { apiCall } from "~/utils/api";
 import { calculateDistance } from "~/utils/distance";
@@ -26,6 +25,7 @@ import {
   requestFCMPermission,
   setupNotificationListeners,
 } from "~/utils/notification";
+import { ms, s, vs } from "~/utils/responsive";
 import ChatScreen from "./chat_screen";
 import OrderDetails from "./order_details";
 
@@ -667,7 +667,7 @@ const OrderPlace: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { flex: 1, paddingHorizontal: s(16), paddingTop: vs(8) },
-  tabContainer: { flexDirection: "row", backgroundColor: Colors.primary300, borderRadius: ms(25) },
+  tabContainer: { flexDirection: "row", backgroundColor: Colors.primary300, borderRadius: ms(25), marginBottom: vs(10) },
   activeTab: { padding: s(14), backgroundColor: Colors.secondary, borderRadius: ms(25), width: "50%", justifyContent: "center", alignItems: "center" },
   activeTabText: { color: Colors.white, fontSize: ms(15), fontFamily: FONTS.semiBold },
   inactiveTabText: { color: Colors.secondary300, fontSize: ms(15), fontFamily: FONTS.semiBold },

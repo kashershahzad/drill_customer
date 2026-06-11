@@ -5,7 +5,6 @@ import SelectedImage from "@/components/selected_image";
 import SelectedLocation from "@/components/selected_location";
 import SelectedService from "@/components/selected_service";
 import Seprator from "@/components/seprator";
-import Stepper from "@/components/stepper";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
@@ -16,15 +15,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
-  View,
+  TextInput, TouchableOpacity, View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "~/components/header";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 
 type BookingParams = {
   id: string;
@@ -152,7 +150,7 @@ export default function ConfirmBooking() {
       <View style={styles.innerContainer}>
         <Header backBtn={true} title={t("booking.confrim")} />
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Stepper step={true} />
+          {/* <Stepper step={true} /> */}
 
           <SelectedService
             serviceType={params.service_type || "instant"}
@@ -195,7 +193,7 @@ export default function ConfirmBooking() {
               <Text style={styles.serviceInfoValue}>
                 {params.service_type === "schedule"
                   ? t("booking.scheduled")
-                  : `⚡ ${t("booking.instant")}`}
+                  : `${t("booking.instant")}`}
               </Text>
             </View>
             {params.service_type === "schedule" &&
@@ -270,12 +268,12 @@ export default function ConfirmBooking() {
               value={promoCode}
               onChangeText={setPromoCode}
             />
-            {/* <TouchableOpacity
+            <TouchableOpacity
               style={styles.applyButton}
               onPress={handleVerifyPromoCode}
             >
               <Text style={styles.applyButtonText}>Apply</Text>
-            </TouchableOpacity> */}
+            </TouchableOpacity>
           </View>
 
           {/* Price Details */}
@@ -310,7 +308,7 @@ export default function ConfirmBooking() {
         </ScrollView>
 
         {/* Confirm Button */}
-        <Button title={t("booking.confrim")} onPress={handleConfirmBooking} />
+        <Button title={t("booking.confrim")} onPress={handleConfirmBooking} style={styles.button}/>
       </View>
     </SafeAreaView>
   );
@@ -320,11 +318,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "white" },
   innerContainer: { flex: 1, paddingHorizontal: s(16), paddingTop: vs(8) },
   sectionTitle: { fontSize: ms(17), fontFamily: FONTS.semiBold, marginBottom: vs(8), color: Colors.secondary },
-  packageContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(12), marginBottom: vs(14), flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  packageContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(12), flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   packageTitle: { fontSize: ms(15), fontFamily: FONTS.semiBold, color: Colors.secondary },
   packageSubtitle: { color: "gray", fontSize: ms(13) },
   packagePrice: { fontSize: ms(15), fontFamily: FONTS.semiBold, color: Colors.secondary },
-  paymentContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(12), marginBottom: vs(14), flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  paymentContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(12), flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   paymentText: { fontSize: ms(15), fontFamily: FONTS.regular },
   separator: { height: 1, backgroundColor: "gray", marginVertical: vs(14) },
   promoContainer: { flexDirection: "row", backgroundColor: Colors.primary300, paddingHorizontal: s(14), paddingVertical: vs(12), borderRadius: ms(12), marginBottom: vs(14), alignItems: "center" },
@@ -337,8 +335,9 @@ const styles = StyleSheet.create({
   boldText: { fontFamily: FONTS.semiBold, color: Colors.secondary, fontSize: ms(13) },
   discountText: { fontFamily: FONTS.semiBold, color: "red", fontSize: ms(13) },
   primaryText: { fontFamily: FONTS.semiBold, color: "#007AFF", fontSize: ms(13) },
-  serviceInfoContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(12), marginBottom: vs(14) },
-  serviceInfoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: vs(7) },
+  serviceInfoContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(12), },
+  serviceInfoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   serviceInfoLabel: { fontSize: ms(13), fontFamily: FONTS.medium, color: Colors.secondary },
   serviceInfoValue: { fontSize: ms(13), fontFamily: FONTS.semiBold, color: Colors.secondary },
+  button: { marginBottom: vs(14), marginTop: vs(14) },
 });

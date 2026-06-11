@@ -14,8 +14,8 @@ import {
 } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 
 type HeaderProps = {
   userName?: string;
@@ -111,7 +111,7 @@ export default function Header({
             accessibilityRole="button"
             accessibilityLabel={t("header.chatSupport") || "Chat with support"}
           >
-            <ChatSupport width={s(26)} height={s(26)} />
+            <ChatSupport width={s(40)} height={s(40)} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -139,10 +139,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   backButton: {
-    minWidth: s(44),
-    minHeight: vs(44),
-    width: s(44),
-    height: vs(44),
+    width: s(40),
+    height: s(40),
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.gray100,
@@ -181,12 +179,11 @@ const styles = StyleSheet.create({
     color: Colors.secondary100,
   },
   notificationButton: {
-    minWidth: s(44),
-    minHeight: vs(44),
+    width: s(44),
+    height: s(44),
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.gray100,
-    padding: s(10),
-    borderRadius: ms(22),
+    borderRadius: s(22),
   },
 });

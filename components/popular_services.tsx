@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 import ServiceCard from "./service_card";
 
 type Service = {
@@ -32,10 +32,20 @@ type ApiService = {
   translations: string;
 };
 
+const toServiceCardItem = (item: Service) => ({
+  ...item,
+  image: { uri: item.image },
+  providerImage: item.providerImage
+    ? { uri: item.providerImage }
+    : require("@/assets/images/user.png"),
+  rating: String(item.rating),
+  reviews: String(item.reviews),
+});
+
 export default function PopularServices() {
   const { t } = useTranslation();
   const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const IMAGE_BASE_URL = "https://7tracking.com/saudiservices/images/";
@@ -110,7 +120,9 @@ export default function PopularServices() {
           horizontal
           showsHorizontalScrollIndicator={false}
           nestedScrollEnabled={true}
-          renderItem={({ item }) => <ServiceCard item={item} />}
+          renderItem={({ item }) => (
+            <ServiceCard item={toServiceCardItem(item)} />
+          )}
           ListEmptyComponent={
             !error && services.length === 0 ? (
               <View style={styles.emptyContainer}>

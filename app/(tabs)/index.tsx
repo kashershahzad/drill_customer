@@ -67,10 +67,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingHorizontal: s(14),
     paddingTop: vs(8),
   },
   contentContainer: {
+    paddingHorizontal: s(14),
     paddingBottom: vs(120),
   },
 });

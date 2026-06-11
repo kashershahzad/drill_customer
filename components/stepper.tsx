@@ -26,21 +26,21 @@ const Stepper: React.FC<StepperProps> = ({ step }) => {
           <DashedSeparator width={110} />
         </View>
 
-        {/* Step 2 */}
-        <View style={styles.step}>
+                {/* Step 2 */}
+                <View style={styles.step}>
           <View
             style={[
               styles.stepIconContainer,
               step ? styles.activeStep : styles.inactiveStep,
             ]}
           >
-            <View style={[styles.innerIconContainer]}>
-              {step ? (
-                <Tick />
-              ) : (
-                <View style={{ height: 24, width: 24 }}></View>
-              )}
-            </View>
+            {step ? (
+              <Tick />
+            ) : (
+              <View style={styles.innerIconContainer}>
+                <View style={{ height: 24, width: 24 }} />
+              </View>
+            )}
           </View>
           <Text style={styles.stepText}>Step 2</Text>
         </View>

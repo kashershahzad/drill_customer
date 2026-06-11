@@ -13,8 +13,8 @@ import ProviderCard from "~/components/provider_card";
 import ServiceDetailsCard from "~/components/service_details_card";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { OrderType } from "~/types/dataTypes";
+import { ms, s, vs } from "~/utils/responsive";
 
 interface OrderDetailsProps {
   order: OrderType;
@@ -39,13 +39,13 @@ export default function OrderDetails({ order }: OrderDetailsProps) {
           <Text style={styles.grayText}>
             {showOrderDetails ? (
               <Ionicons
-                name="chevron-down"
+                name="chevron-up"
                 size={20}
                 color={Colors.secondary300}
               />
             ) : (
               <Ionicons
-                name="chevron-up"
+                name="chevron-down"
                 size={20}
                 color={Colors.secondary300}
               />
@@ -72,7 +72,7 @@ export default function OrderDetails({ order }: OrderDetailsProps) {
 const styles = StyleSheet.create({
   contentContainer: { flex: 1 },
   orderHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  orderDetailsContainer: { backgroundColor: Colors.primary300, marginTop: vs(20), borderRadius: ms(25), padding: s(14), marginBottom: vs(20) },
+  orderDetailsContainer: { backgroundColor: Colors.primary300, marginTop: vs(20), borderRadius: ms(12), paddingHorizontal: s(16), paddingVertical: s(16), marginBottom: vs(20) },
   sectionTitle: { fontSize: ms(17), fontFamily: FONTS.semiBold, color: Colors.secondary },
   orderDetails: { marginTop: vs(8), padding: s(14), backgroundColor: Colors.white, borderRadius: ms(12) },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginVertical: vs(4) },

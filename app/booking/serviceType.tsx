@@ -301,8 +301,8 @@ export default function ServiceTypeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { flex: 1, paddingHorizontal: s(16), paddingTop: vs(8) },
-  title: { fontSize: ms(22), fontFamily: FONTS.bold, color: Colors.secondary, marginBottom: vs(6), textAlign: "center" },
-  subtitle: { fontSize: ms(15), fontFamily: FONTS.regular, color: Colors.secondary, marginBottom: vs(24), textAlign: "center" },
+  title: { fontSize: ms(22), fontFamily: FONTS.bold, color: Colors.secondary, marginBottom: vs(6), textAlign: "left" },
+  subtitle: { fontSize: ms(15), fontFamily: FONTS.regular, color: Colors.secondary, marginBottom: vs(24), textAlign: "left" },
   section: { marginBottom: vs(20) },
   optionContainer: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.primary300, paddingHorizontal: s(14), paddingVertical: vs(14), borderRadius: ms(12), marginBottom: vs(10) },
   optionContent: { flex: 1, marginLeft: s(12) },

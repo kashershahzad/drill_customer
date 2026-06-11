@@ -1,5 +1,4 @@
 import CategoryCard from "@/components/category_card";
-import { useAuth } from "~/contexts/AuthContext";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -13,8 +12,9 @@ import {
 } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
+import { useAuth } from "~/contexts/AuthContext";
 import { apiCall } from "~/utils/api";
+import { ms, vs } from "~/utils/responsive";
 
 type Category = {
   id: string;

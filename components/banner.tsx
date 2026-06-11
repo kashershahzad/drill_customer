@@ -19,13 +19,17 @@ export default function Banner() {
 
 const styles = StyleSheet.create({
   container: {
+    width: "100%",
+    marginTop: vs(10),
     marginBottom: vs(16),
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+
   },
   image: {
     width: "100%",
-    height: BANNER_HEIGHT,
+    height: 172,
     borderRadius: s(8),
   },
 });

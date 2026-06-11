@@ -61,7 +61,7 @@ export default function SelectedService({
         </Text>
       </View>
       <TouchableOpacity onPress={handleSelectService}>
-        <Edit />
+        <Edit width={s(24)} height={s(24)}/>
       </TouchableOpacity>
     </View>
   );
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   container: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   imageContainer: { padding: s(8), backgroundColor: Colors.primary200, borderRadius: ms(12) },
   image: { width: s(46), height: s(46), borderRadius: ms(8) },
-  textContainer: { flex: 1, marginLeft: s(14) },
+  textContainer: { flex: 1, marginLeft: s(14), gap: vs(5) },
   title: { fontSize: ms(16), color: Colors.secondary, fontFamily: FONTS.semiBold },
   date: { fontSize: ms(12), fontFamily: FONTS.regular, color: Colors.secondary300 },
   dateValue: { fontSize: ms(13), fontFamily: FONTS.regular, color: Colors.secondary },

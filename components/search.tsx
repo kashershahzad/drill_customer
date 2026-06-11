@@ -41,7 +41,7 @@ export default function Search() {
         accessibilityRole="button"
         accessibilityLabel={t("search.searchServices")}
       >
-        <SearchIcon width={s(22)} height={s(22)} />
+        <SearchIcon width={s(24)} height={s(24)} />
       </TouchableOpacity>
     </View>
   );
@@ -63,6 +63,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: s(14),
     paddingVertical: vs(14),
     borderRadius: ms(12),
+    height: vs(44),
+    justifyContent: "center",
   },
   input: {
     flex: 1,
@@ -70,6 +72,8 @@ const styles = StyleSheet.create({
     marginLeft: s(8),
     fontSize: ms(15),
     fontFamily: FONTS.medium,
+    height: vs(44),
+    justifyContent: "center",
   },
   locationButton: {
     minWidth: s(44),
@@ -78,7 +82,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   searchButton: {
-    minWidth: s(44),
+    minWidth: vs(44),
     minHeight: vs(44),
     justifyContent: "center",
     alignItems: "center",

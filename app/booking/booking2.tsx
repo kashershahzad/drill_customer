@@ -23,8 +23,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import DashedSeparator from "~/components/dashed_seprator";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 
 interface Package {
   id: string;
@@ -210,8 +210,8 @@ export default function Booking2Screen() {
           <Seprator />
 
           {/* Payment Method */}
-          <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>
+          <View style={[styles.rowBetween, { marginBottom: vs(12) }]}>
+            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
               {t("booking.paymentmethod")}
             </Text>
             <TouchableOpacity onPress={handleAddCard}>
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: ms(17), fontFamily: FONTS.semiBold, marginBottom: vs(12), color: Colors.secondary },
   packageCard: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(10), marginBottom: vs(10) },
   selectedPackageCard: { borderWidth: 2, borderColor: Colors.primary },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center"},
   packageName: { fontSize: ms(15), fontFamily: FONTS.semiBold, color: Colors.secondary },
   packageDetails: { fontSize: ms(13), color: Colors.secondary },
   addCardText: { fontSize: ms(13), color: Colors.primary, fontFamily: FONTS.medium },
@@ -276,8 +276,9 @@ const styles = StyleSheet.create({
   paymentName: { fontSize: ms(15), color: "#333", fontFamily: FONTS.regular },
   radioOuter: { width: s(22), height: s(22), borderRadius: ms(11), borderWidth: 2, borderColor: "#666", alignItems: "center", justifyContent: "center" },
   radioInner: { width: s(12), height: s(12), borderRadius: ms(6), backgroundColor: "#007AFF" },
-  buttonRow: { flexDirection: "row", justifyContent: "space-between", marginTop: vs(14) },
+  buttonRow: { flexDirection: "row", justifyContent: "space-between", marginTop: vs(14), marginBottom: vs(14) },
   featureItem: { flexDirection: "row", alignItems: "center", marginBottom: vs(4) },
   bulletPoint: { fontSize: ms(15), color: Colors.primary, marginRight: s(6) },
   featureText: { fontSize: ms(13), color: Colors.secondary, fontFamily: FONTS.regular },
+  marginBottom: { marginBottom: vs(12) },
 });

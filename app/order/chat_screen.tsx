@@ -21,8 +21,8 @@ import {
 } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 
 // Define a simpler emoji picker array instead of using the library
 const EMOJI_LIST = [
@@ -736,10 +736,10 @@ const styles = StyleSheet.create({
   providerMessage: { backgroundColor: Colors.gray100, padding: s(11), borderRadius: ms(14), borderBottomStartRadius: 4, maxWidth: "100%" },
   messageText: { color: Colors.secondary, fontSize: ms(15), fontFamily: FONTS.regular },
   messageImage: { width: s(180), height: s(180), borderRadius: ms(8), marginBottom: vs(7) },
-  chatInputContainer: { flexDirection: "row", width: "100%", alignItems: "center", paddingVertical: vs(7), paddingHorizontal: s(14), backgroundColor: Colors.white },
-  inputFieldContainer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flex: 1, paddingHorizontal: s(12), marginHorizontal: s(7), borderRadius: ms(24), borderWidth: 1, borderColor: Colors.gray, minHeight: vs(44) },
+  chatInputContainer: { flexDirection: "row", width: "100%", alignItems: "center", paddingVertical: vs(7), justifyContent: "space-between" },
+  inputFieldContainer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flex: 1, paddingHorizontal: s(12), marginHorizontal: s(7), borderRadius: ms(8), borderWidth: 1, borderColor: Colors.gray, minHeight: vs(44) },
   chatInput: { flex: 1, padding: s(7), fontSize: ms(15), fontFamily: FONTS.regular, maxHeight: vs(90) },
-  sendButton: { padding: s(7) },
+  sendButton: { backgroundColor: Colors.white },
   disabledSendButton: { opacity: 0.5 },
   modalContainer: { flex: 1, backgroundColor: Colors.white, marginTop: "50%", borderTopLeftRadius: ms(20), borderTopRightRadius: ms(20), overflow: "hidden" },
   emojiPickerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: s(14), borderBottomWidth: 1, borderBottomColor: Colors.gray100 },
