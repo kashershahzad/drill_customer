@@ -2,6 +2,7 @@ import { Colors } from "@/constants/Colors";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TextInput, View } from "react-native";
+import { getInputFontSize, inputFieldStyles } from "~/components/inputfield";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
 
@@ -47,8 +48,9 @@ export default function SelectedDescription({
         </View>
       ) : (
         <TextInput
-          style={styles.input}
+          style={[styles.input, { fontSize: getInputFontSize(description) }]}
           placeholder={t("enterDescription")}
+          placeholderTextColor={Colors.secondary300}
           multiline
           value={description}
           onChangeText={handleChangeText}
@@ -61,8 +63,15 @@ export default function SelectedDescription({
 
 const styles = StyleSheet.create({
   title: { fontSize: ms(17), fontFamily: FONTS.semiBold, marginBottom: vs(8), color: Colors.secondary },
-  input: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(10), height: vs(120), textAlignVertical: "top", fontSize: ms(14) },
-  descriptionContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(10), minHeight: vs(120) },
+  input: {
+    ...inputFieldStyles.field,
+    minHeight: vs(120),
+    textAlignVertical: "top",
+  },
+  descriptionContainer: {
+    ...inputFieldStyles.field,
+    minHeight: vs(120),
+  },
   descriptionText: { color: Colors.secondary, fontSize: ms(14) },
   disabledText: { color: Colors.secondary300, fontSize: ms(12), marginTop: vs(8), textAlign: "center" },
 });

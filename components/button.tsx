@@ -15,13 +15,13 @@ type ButtonProps = {
   title?: string;
   onPress?: () => Promise<void> | void;
   variant?: "primary" | "secondary";
+  size?: "default" | "compact";
   fullWidth?: boolean;
   width?: DimensionValue;
   bgColor?: string;
   textColor?: string;
   Icon?: React.ReactNode;
   textSize?: number;
-  paddingvertical?: number;
   disabled?: boolean;
   style?: any;
 };
@@ -30,13 +30,13 @@ export default function Button({
   title,
   onPress,
   variant = "primary",
+  size = "default",
   fullWidth = true,
   width,
   bgColor,
   textColor,
   Icon,
   textSize,
-  paddingvertical,
   disabled,
   style,
 }: ButtonProps) {
@@ -49,11 +49,13 @@ export default function Button({
     setLoading(false);
   };
 
+  const isCompact = size === "compact";
+
   return (
     <TouchableOpacity
       style={[
-        style,
         styles.button,
+        isCompact && styles.compactButton,
         fullWidth
           ? styles.fullWidth
           : width !== undefined
@@ -61,9 +63,7 @@ export default function Button({
           : null,
         variant === "primary" ? styles.primary : styles.secondary,
         bgColor && { backgroundColor: bgColor },
-        paddingvertical !== undefined
-          ? { paddingVertical: paddingvertical }
-          : null,
+        style,
       ]}
       onPress={handlePress}
       disabled={loading || disabled}
@@ -76,7 +76,12 @@ export default function Button({
           color={textColor || (variant === "primary" ? Colors.white : Colors.secondary)}
         />
       ) : (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: s(4) }}>
+        <View
+          style={[
+            styles.contentRow,
+            isCompact && styles.compactContentRow,
+          ]}
+        >
           {Icon ? Icon : ""}
           <Text
             style={[
@@ -96,11 +101,26 @@ export default function Button({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: vs(28),
-    paddingVertical: vs(14),
-    borderRadius: ms(10),
+    minHeight: vs(56),
+    paddingVertical: vs(16),
+    paddingHorizontal: s(24),
+    borderRadius: ms(12),
     alignItems: "center",
     justifyContent: "center",
+  },
+  compactButton: {
+    minHeight: vs(36),
+    paddingVertical: vs(6),
+    paddingHorizontal: s(8),
+    borderRadius: ms(8),
+  },
+  contentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: s(4),
+  },
+  compactContentRow: {
+    gap: s(6),
   },
   fullWidth: {
     width: "100%",

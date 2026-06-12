@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "~/components/header";
+import { getInputFontSize, inputFieldStyles } from "~/components/inputfield";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
@@ -263,8 +264,9 @@ export default function ConfirmBooking() {
           <Text style={styles.sectionTitle}>{t("booking.promocode")}</Text>
           <View style={styles.promoContainer}>
             <TextInput
-              style={styles.promoInput}
+              style={[styles.promoInput, { fontSize: getInputFontSize(promoCode) }]}
               placeholder={t("booking.enterPromoCode")}
+              placeholderTextColor={Colors.secondary300}
               value={promoCode}
               onChangeText={setPromoCode}
             />
@@ -325,8 +327,11 @@ const styles = StyleSheet.create({
   paymentContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(12), flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   paymentText: { fontSize: ms(15), fontFamily: FONTS.regular },
   separator: { height: 1, backgroundColor: "gray", marginVertical: vs(14) },
-  promoContainer: { flexDirection: "row", backgroundColor: Colors.primary300, paddingHorizontal: s(14), paddingVertical: vs(12), borderRadius: ms(12), marginBottom: vs(14), alignItems: "center" },
-  promoInput: { flex: 1, fontSize: ms(14) },
+  promoContainer: {
+    ...inputFieldStyles.fieldContainer,
+    marginBottom: vs(14),
+  },
+  promoInput: { ...inputFieldStyles.fieldInput },
   applyButton: { backgroundColor: Colors.primary, paddingVertical: vs(7), paddingHorizontal: s(14), borderRadius: ms(8) },
   applyButtonText: { color: "white", fontSize: ms(13) },
   priceContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(12), marginBottom: vs(14) },

@@ -20,6 +20,7 @@ import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
 import Button from "./button";
+import { getInputFontSize, inputFieldStyles } from "./inputfield";
 
 type PopupType =
   | "timeup"
@@ -251,8 +252,9 @@ export default function Popup({
             <Text style={styles.title}>{t("popup.addTip")}</Text>
             <Text style={styles.description}>{t("popup.tipDescription")}</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { fontSize: getInputFontSize(tipAmount) }]}
               placeholder={t("popup.enterTipAmount")}
+              placeholderTextColor={Colors.secondary300}
               keyboardType="numeric"
               value={tipAmount}
               onChangeText={setTipAmount}
@@ -291,8 +293,9 @@ export default function Popup({
                   })}
                 </Text>
                 <TextInput
-                  style={styles.textarea}
+                  style={[styles.textarea, { fontSize: getInputFontSize(review) }]}
                   placeholder={t("popup.writeReview")}
+                  placeholderTextColor={Colors.secondary300}
                   multiline
                   value={review}
                   onChangeText={setReview}
@@ -369,9 +372,18 @@ const styles = StyleSheet.create({
   image: { marginBottom: vs(10) },
   title: { color: Colors.secondary, fontSize: ms(21), fontFamily: FONTS.bold, textAlign: "center", marginBottom: vs(7) },
   description: { color: Colors.secondary300, fontSize: ms(13), fontFamily: FONTS.regular, textAlign: "center", marginBottom: vs(14), paddingHorizontal: s(10) },
-  input: { width: "100%", backgroundColor: Colors.primary300, borderRadius: ms(10), paddingHorizontal: s(14), paddingVertical: vs(14), fontSize: ms(15), fontFamily: FONTS.regular, marginTop: vs(9), textAlign: "center" },
+  input: {
+    ...inputFieldStyles.field,
+    marginTop: vs(9),
+    textAlign: "center",
+  },
   starsContainer: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginVertical: vs(9), gap: s(7) },
   ratingText: { fontSize: ms(15), fontFamily: FONTS.bold, color: Colors.black, textAlign: "center", marginTop: vs(5) },
-  textarea: { width: "100%", backgroundColor: Colors.primary300, borderRadius: ms(10), paddingHorizontal: s(10), paddingVertical: vs(10), fontSize: ms(15), fontFamily: FONTS.regular, marginTop: vs(9), textAlignVertical: "top", height: vs(90) },
+  textarea: {
+    ...inputFieldStyles.field,
+    marginTop: vs(9),
+    textAlignVertical: "top",
+    minHeight: vs(90),
+  },
   footerButtons: { flexDirection: "row", justifyContent: "space-between", width: "100%", gap: s(6) },
 });

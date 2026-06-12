@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import MapView, { Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { getInputFontSize, inputFieldStyles } from "~/components/inputfield";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
 
@@ -299,8 +300,12 @@ export default function LocationScreen() {
         {manualLocation && (
           <View style={styles.searchContainer}>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                { fontSize: getInputFontSize(selectedLocation.address) },
+              ]}
               placeholder={t("booking.enterAddressManually")}
+              placeholderTextColor={Colors.secondary300}
               value={selectedLocation.address || ""}
               onChangeText={handleManualAddressChange}
               multiline={true}
@@ -400,7 +405,11 @@ const styles = StyleSheet.create({
   addressText: { color: Colors.secondary300, marginTop: vs(4), fontSize: ms(13) },
   coordsText: { color: Colors.secondary300, marginTop: vs(4), fontSize: ms(11), fontStyle: "italic" },
   searchContainer: { marginBottom: vs(14) },
-  input: { backgroundColor: Colors.white, padding: s(12), borderRadius: ms(8), borderWidth: 1, borderColor: Colors.gray, marginBottom: vs(7), minHeight: vs(50), textAlignVertical: "top", fontSize: ms(14) },
+  input: {
+    ...inputFieldStyles.field,
+    marginBottom: vs(7),
+    textAlignVertical: "top",
+  },
   searchButton: { backgroundColor: Colors.primary, padding: s(12), borderRadius: ms(8), alignItems: "center" },
   searchButtonText: { color: Colors.white, fontFamily: FONTS.semiBold, fontSize: ms(14) },
   buttonContainer: { paddingHorizontal: s(16), paddingVertical: vs(10), gap: vs(8) },

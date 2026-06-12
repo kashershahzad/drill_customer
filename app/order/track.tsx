@@ -440,7 +440,6 @@ export default function Track() {
             title={t("goBack")}
             onPress={() => router.back()}
             variant="primary"
-            paddingvertical={12}
           />
         </View>
       ) : (

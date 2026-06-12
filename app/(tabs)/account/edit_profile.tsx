@@ -270,7 +270,9 @@ export default function EditProfile() {
 
             <Seprator />
 
+            <View style={styles.fieldsContainer}>
             <Inputfield
+              containerStyle={styles.fieldItem}
               label={t("account.fullname")}
               placeholder={t("account.enterName")}
               IconComponent={<Profile />}
@@ -278,6 +280,7 @@ export default function EditProfile() {
               onChangeText={(text) => handleInputChange("name", text)}
             />
             <Inputfield
+              containerStyle={styles.fieldItem}
               label={t("account.phonenumber")}
               placeholder={t("account.enterPhone")}
               IconComponent={<Phone />}
@@ -285,6 +288,7 @@ export default function EditProfile() {
               onChangeText={(text) => handleInputChange("phone", text)}
             />
             <Inputfield
+              containerStyle={styles.fieldItem}
               label={t("account.emailaddress")}
               placeholder={t("account.enterEmail")}
               IconComponent={<Email />}
@@ -292,6 +296,7 @@ export default function EditProfile() {
               onChangeText={(text) => handleInputChange("email", text)}
             />
             <Inputfield
+              containerStyle={styles.fieldItem}
               label={t("account.dob")}
               placeholder={t("account.dobFormat")}
               IconComponent={<DOB />}
@@ -300,6 +305,7 @@ export default function EditProfile() {
               dateFormat={true}
             />
             <Inputfield
+              containerStyle={styles.fieldItem}
               label={t("account.address")}
               placeholder={t("account.enterAddress")}
               IconComponent={<Address />}
@@ -310,6 +316,7 @@ export default function EditProfile() {
             <View style={styles.rowContainer}>
               <View style={styles.flexItem}>
                 <Inputfield
+                  containerStyle={styles.fieldItem}
                   label={t("account.city")}
                   placeholder={t("account.enterCity")}
                   IconComponent={<City />}
@@ -319,6 +326,7 @@ export default function EditProfile() {
               </View>
               <View style={styles.flexItem}>
                 <Inputfield
+                  containerStyle={styles.fieldItem}
                   label={t("account.zipcode")}
                   placeholder={t("account.enterZipCode")}
                   IconComponent={<Zip />}
@@ -327,6 +335,7 @@ export default function EditProfile() {
                   onChangeText={(text) => handleInputChange("zip", text)}
                 />
               </View>
+            </View>
             </View>
 
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -348,7 +357,9 @@ const styles = StyleSheet.create({
   imageIconWrapper: { position: "absolute", bottom: 0, right: 0, backgroundColor: "white", height: s(24), width: s(24), borderRadius: 999, borderWidth: 1, borderColor: "white", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   userName: { fontSize: ms(22), fontFamily: FONTS.semiBold, color: Colors.secondary, marginTop: vs(10) },
   userEmail: { color: Colors.secondary300, fontFamily: FONTS.regular, fontSize: ms(13) },
-  rowContainer: { flexDirection: "row", paddingBottom: vs(12), gap: s(14) },
+  fieldsContainer: { gap: vs(20) },
+  fieldItem: { marginBottom: 0 },
+  rowContainer: { flexDirection: "row", gap: s(20) },
   flexItem: { flex: 1 },
   errorText: { color: "red", textAlign: "center", marginTop: vs(10), fontFamily: FONTS.medium, fontSize: ms(13) },
 });

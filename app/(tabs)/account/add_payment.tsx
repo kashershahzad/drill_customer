@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "~/components/button";
+import { getInputFontSize, inputFieldStyles, INPUT_ICON_SIZE } from "~/components/inputfield";
 import { useToast } from "~/components/ToastProvider";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
@@ -107,10 +108,11 @@ export default function AddPayment() {
         {/* Add Money Section */}
         <Text style={styles.sectionTitle}>{t("addPayment.addMoney")}</Text>
         <View style={styles.inputContainer}>
-          <Ionicons name="wallet" size={24} color="gray" />
+          <Ionicons name="wallet" size={INPUT_ICON_SIZE} color="gray" />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { fontSize: getInputFontSize(amount ? String(amount) : "") }]}
             keyboardType="numeric"
+            placeholderTextColor={Colors.secondary300}
             value={amount.toString()}
             onChangeText={(text) => setAmount(Number(text) || 0)}
           />
@@ -143,8 +145,8 @@ const styles = StyleSheet.create({
   dotsContainer: { flexDirection: "row", justifyContent: "center", marginTop: vs(8) },
   dot: { height: vs(8), backgroundColor: "blue", borderRadius: ms(4), marginHorizontal: s(4) },
   sectionTitle: { fontSize: ms(17), fontFamily: FONTS.semiBold, marginTop: vs(20) },
-  inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.gray100, paddingHorizontal: s(14), paddingVertical: vs(14), borderRadius: ms(8), marginVertical: vs(7) },
-  input: { flex: 1, marginHorizontal: s(14), fontSize: ms(17) },
+  inputContainer: { ...inputFieldStyles.fieldContainer, marginVertical: vs(7) },
+  input: { ...inputFieldStyles.fieldInput },
   confirmButton: { backgroundColor: "blue", padding: s(14), borderRadius: ms(8), alignItems: "center", marginTop: vs(20) },
   confirmText: { color: "white", fontSize: ms(17), fontFamily: FONTS.semiBold },
 });

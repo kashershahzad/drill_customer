@@ -20,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { Colors } from "~/constants/Colors";
+import { getInputFontSize, inputFieldStyles, INPUT_ICON_SIZE } from "~/components/inputfield";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
 import { ms, s, vs } from "~/utils/responsive";
@@ -597,16 +598,17 @@ export default function ChatScreen() {
         <View>
           <View style={styles.chatInputContainer}>
             <TouchableOpacity onPress={openMediaPicker}>
-              <Add />
+              <Add width={INPUT_ICON_SIZE} height={INPUT_ICON_SIZE} />
             </TouchableOpacity>
             <View style={styles.inputFieldContainer}>
               <TextInput
-                style={styles.chatInput}
+                style={[styles.chatInput, { fontSize: getInputFontSize(inputMessage) }]}
                 value={inputMessage}
                 onChangeText={(text) => setInputMessage(text)}
                 placeholder={
                   attachment ? t("order.sendWithImage") : t("order.typeMessage")
                 }
+                placeholderTextColor={Colors.secondary300}
                 multiline
               />
               {attachment && (
@@ -628,7 +630,7 @@ export default function ChatScreen() {
                 </View>
               )}
               <TouchableOpacity onPress={() => setIsEmojiPickerVisible(true)}>
-                <Smile />
+                <Smile width={INPUT_ICON_SIZE} height={INPUT_ICON_SIZE} />
               </TouchableOpacity>
             </View>
             <TouchableOpacity
@@ -737,8 +739,15 @@ const styles = StyleSheet.create({
   messageText: { color: Colors.secondary, fontSize: ms(15), fontFamily: FONTS.regular },
   messageImage: { width: s(180), height: s(180), borderRadius: ms(8), marginBottom: vs(7) },
   chatInputContainer: { flexDirection: "row", width: "100%", alignItems: "center", paddingVertical: vs(7), justifyContent: "space-between" },
-  inputFieldContainer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flex: 1, paddingHorizontal: s(12), marginHorizontal: s(7), borderRadius: ms(8), borderWidth: 1, borderColor: Colors.gray, minHeight: vs(44) },
-  chatInput: { flex: 1, padding: s(7), fontSize: ms(15), fontFamily: FONTS.regular, maxHeight: vs(90) },
+  inputFieldContainer: {
+    ...inputFieldStyles.fieldContainer,
+    flex: 1,
+    marginHorizontal: s(7),
+  },
+  chatInput: {
+    ...inputFieldStyles.fieldInput,
+    maxHeight: vs(90),
+  },
   sendButton: { backgroundColor: Colors.white },
   disabledSendButton: { opacity: 0.5 },
   modalContainer: { flex: 1, backgroundColor: Colors.white, marginTop: "50%", borderTopLeftRadius: ms(20), borderTopRightRadius: ms(20), overflow: "hidden" },

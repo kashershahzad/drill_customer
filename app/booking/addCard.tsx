@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "~/components/header";
+import { Colors } from "~/constants/Colors";
+import { inputFieldStyles } from "~/components/inputfield";
 import { useToast } from "~/components/ToastProvider";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
@@ -41,12 +43,17 @@ export default function AddCard() {
         />
 
         <Text style={styles.label}>{t("booking.cardHolderName")}</Text>
-        <TextInput style={styles.input} placeholder={t("booking.cardHolderName")} />
+        <TextInput
+          style={styles.input}
+          placeholder={t("booking.cardHolderName")}
+          placeholderTextColor={Colors.secondary300}
+        />
 
         <Text style={styles.label}>{t("booking.cardNumber")}</Text>
         <TextInput
           style={styles.input}
           placeholder={t("booking.cardNumber")}
+          placeholderTextColor={Colors.secondary300}
           keyboardType="numeric"
         />
 
@@ -56,6 +63,7 @@ export default function AddCard() {
             <TextInput
               style={styles.input}
               placeholder="MM/YY"
+              placeholderTextColor={Colors.secondary300}
               keyboardType="numeric"
             />
           </View>
@@ -64,6 +72,7 @@ export default function AddCard() {
             <TextInput
               style={styles.input}
               placeholder={t("booking.code")}
+              placeholderTextColor={Colors.secondary300}
               secureTextEntry
             />
           </View>
@@ -80,6 +89,7 @@ export default function AddCard() {
             <TextInput
               style={styles.input}
               placeholder="0123456789"
+              placeholderTextColor={Colors.secondary300}
               keyboardType="phone-pad"
             />
 
@@ -87,6 +97,7 @@ export default function AddCard() {
             <TextInput
               style={styles.input}
               placeholder="example@email.com"
+              placeholderTextColor={Colors.secondary300}
               keyboardType="email-address"
             />
           </>
@@ -107,7 +118,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: ms(22), fontFamily: FONTS.semiBold, marginLeft: s(14), color: "#374151" },
   cardImage: { width: "100%", marginBottom: vs(20) },
   label: { fontSize: ms(17), fontFamily: FONTS.bold, marginBottom: vs(7) },
-  input: { backgroundColor: "#E5E7EB", paddingHorizontal: s(14), paddingVertical: vs(14), borderRadius: ms(8), marginBottom: vs(14), fontSize: ms(14) },
+  input: { ...inputFieldStyles.field, marginBottom: vs(14) },
   rowBetween: { flexDirection: "row", justifyContent: "space-between", marginBottom: vs(14) },
   inputContainer: { width: "48%" },
   toggleContainer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: vs(14) },

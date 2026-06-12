@@ -1,5 +1,6 @@
 import Flag from "@/assets/svgs/saudiarabia.svg";
 import Button from "@/components/button";
+import { getInputFontSize, inputFieldStyles, INPUT_FIELD_BACKGROUND, INPUT_FIELD_PADDING, INPUT_ICON_SIZE } from "@/components/inputfield";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
@@ -87,9 +88,9 @@ export default function Login() {
           onPress={() => modalRef.current.open()}
           style={styles.countrySelector}
         >
-          <Flag width={s(25)} height={s(25)} />
+          <Flag width={INPUT_ICON_SIZE} height={INPUT_ICON_SIZE} />
           <Text style={styles.countryText}>{countryCode.label}</Text>
-          <Ionicons name="chevron-down" size={s(20)} />
+          <Ionicons name="chevron-down" size={INPUT_ICON_SIZE} />
         </TouchableOpacity>
 
         <ModalSelector
@@ -102,7 +103,7 @@ export default function Login() {
 
         <View style={styles.divider} />
         <TextInput
-          style={styles.input}
+          style={[styles.input, { fontSize: getInputFontSize(phoneNumber) }]}
           keyboardType="numeric"
           placeholderTextColor={Colors.secondary300}
           placeholder={t("login.phonePlaceholder")}
@@ -162,18 +163,19 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.regular,
   },
   inputContainer: {
-    borderWidth: 1,
-    borderColor: Colors.gray,
+    width: "100%",
+    backgroundColor: INPUT_FIELD_BACKGROUND,
     borderRadius: ms(12),
     marginBottom: vs(20),
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.gray,
   },
   countrySelector: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: s(16),
-    paddingVertical: vs(14),
+    padding: INPUT_FIELD_PADDING,
   },
   countryText: {
     flex: 1,
@@ -187,8 +189,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.gray,
   },
   input: {
-    paddingHorizontal: s(16),
-    paddingVertical: vs(14),
+    ...inputFieldStyles.fieldInput,
+    padding: INPUT_FIELD_PADDING,
     fontSize: ms(17),
   },
   consentText: {

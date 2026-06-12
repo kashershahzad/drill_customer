@@ -102,32 +102,30 @@ export default function ProviderCard({ order }: ProviderCardProps) {
       <DashedSeparator />
       <View style={styles.buttonRow}>
         <Button
-          Icon={<Call />}
+          Icon={<Call width={s(16)} height={s(16)} />}
+          size="compact"
           fullWidth={false}
-          width={"30%"}
-          style={{ height: vs(36) }}
+          style={styles.actionButton}
           textSize={ms(14)}
           title={t("call")}
           variant="secondary"
           onPress={handleCall}
         />
         <Button
-          Icon={<Message />}
+          Icon={<Message width={s(16)} height={s(16)} />}
+          size="compact"
           fullWidth={false}
-          width={"30%"}
-          style={{ height: vs(36) }}
+          style={styles.actionButton}
           textSize={ms(14)}
           title={t("chat")}
           variant="primary"
           onPress={handleChat}
         />
-        {/* Only show Track button if NOT on track screen */}
-
         <Button
-          Icon={<Track />}
+          Icon={<Track width={s(16)} height={s(16)} />}
+          size="compact"
           fullWidth={false}
-          width={"30%"}
-          style={{ height: vs(36) }}
+          style={styles.actionButton}
           textSize={ms(14)}
           title={t("track")}
           variant="secondary"
@@ -142,7 +140,8 @@ const styles = StyleSheet.create({
   providerContainer: { padding: s(14), backgroundColor: Colors.gray400, borderRadius: ms(12), marginTop: vs(8) },
   providerImage: { width: s(46), height: s(46), borderRadius: ms(23) },
   providerInfo: { marginLeft: s(14) },
-  buttonRow: { flexDirection: "row", justifyContent: "space-between" },
+  buttonRow: { flexDirection: "row", gap: s(6) },
+  actionButton: { flex: 1 },
   providerName: { fontFamily: FONTS.bold, color: Colors.secondary, fontSize: ms(17), marginBottom: vs(4) },
   grayText: { color: Colors.secondary, fontSize: ms(13) },
   loadingContainer: { minHeight: vs(100), justifyContent: "center", alignItems: "center" },
