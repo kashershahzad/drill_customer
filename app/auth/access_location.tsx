@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { useAuth } from "~/contexts/AuthContext";
+import { getDeviceCoordinates } from "~/utils/location";
 import {
   registerDeviceWithBackend,
   requestFCMPermission,
@@ -71,8 +72,8 @@ export default function AccessLocation() {
         setLoading(false);
         return;
       }
-      const location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
+
+      const { latitude, longitude } = await getDeviceCoordinates();
 
       await AsyncStorage.setItem("latitude", String(latitude));
       await AsyncStorage.setItem("longitude", String(longitude));
@@ -105,8 +106,17 @@ export default function AccessLocation() {
       } else {
         router.replace("/(tabs)");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching location:", error);
+
+      if (error?.message === "LOCATION_SERVICES_DISABLED") {
+        Alert.alert(
+          t("accessLocation.error"),
+          t("accessLocation.locationServicesDisabled"),
+        );
+        return;
+      }
+
       Alert.alert(t("accessLocation.error"), t("accessLocation.errorMessage"));
     } finally {
       setLoading(false);

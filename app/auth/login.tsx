@@ -1,6 +1,11 @@
 import Flag from "@/assets/svgs/saudiarabia.svg";
 import Button from "@/components/button";
-import { getInputFontSize, inputFieldStyles, INPUT_FIELD_BACKGROUND, INPUT_FIELD_PADDING, INPUT_ICON_SIZE } from "@/components/inputfield";
+import {
+  getInputFontSize,
+  INPUT_FIELD_BACKGROUND,
+  INPUT_FIELD_PADDING,
+  INPUT_ICON_SIZE,
+} from "@/components/inputfield";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
@@ -61,7 +66,10 @@ export default function Login() {
         await AsyncStorage.setItem("user_id", response.user_id);
         await AsyncStorage.setItem("user_type", response.user_type);
         await setUser(response.user_id);
-        console.log("📲 Login: sending update_noti for user_id:", response.user_id);
+        console.log(
+          "📲 Login: sending update_noti for user_id:",
+          response.user_id,
+        );
         await registerDeviceWithBackend(response.user_id);
         console.log("📲 Login: update_noti request completed");
         router.push("/auth/verify");
@@ -189,17 +197,21 @@ const styles = StyleSheet.create({
     borderColor: Colors.gray,
   },
   input: {
-    ...inputFieldStyles.fieldInput,
+    width: "100%",
+    minHeight: vs(48),
     padding: INPUT_FIELD_PADDING,
     fontSize: ms(17),
+    fontFamily: FONTS.regular,
+    color: Colors.secondary,
+    textAlignVertical: "center",
   },
   consentText: {
     textAlign: "center",
     fontSize: ms(13),
     fontFamily: FONTS.regular,
     color: Colors.secondary100,
-    marginBottom: vs(20),
     paddingHorizontal: s(8),
+    height: 59,
   },
   privacyLink: {
     fontFamily: FONTS.semiBold,

@@ -123,7 +123,8 @@
     "permissionDenied": "Permission Denied",
     "permissionRequired": "Location access is required.",
     "error": "Error",
-    "errorMessage": "Failed to fetch location."
+    "errorMessage": "Failed to fetch location.",
+    "locationServicesDisabled": "Turn on location services, or in the Android emulator set a mock location via the ⋮ menu > Location."
   },
   "language": {
     "language": "Language",

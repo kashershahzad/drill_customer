@@ -28,16 +28,16 @@ import { ms, s, vs } from "~/utils/responsive";
 type LocationStateType = Location.LocationObject;
 type MapCoordinate = { latitude: number; longitude: number };
 
-// Dev testing: fixed Faisalabad coords so map + polyline always show on phone
-const USE_TEST_MAP_LOCATIONS = __DEV__;
-const TEST_PROVIDER_LOCATION: MapCoordinate = {
-  latitude: 31.4174815,
-  longitude: 73.104439,
-};
-const TEST_CUSTOMER_LOCATION: MapCoordinate = {
-  latitude: 31.39541,
-  longitude: 73.111622,
-};
+// Dev testing coords (disabled — use order API + device GPS)
+// const USE_TEST_MAP_LOCATIONS = __DEV__;
+// const TEST_PROVIDER_LOCATION: MapCoordinate = {
+//   latitude: 31.4174815,
+//   longitude: 73.104439,
+// };
+// const TEST_CUSTOMER_LOCATION: MapCoordinate = {
+//   latitude: 31.39541,
+//   longitude: 73.111622,
+// };
 
 const parseCoordinates = (
   lat?: string | number,
@@ -207,23 +207,14 @@ export default function Track() {
     }
   }, [orderId, isOrderLoaded]);
 
-  const customerLocation = useMemo((): MapCoordinate => {
-    if (USE_TEST_MAP_LOCATIONS) {
-      return TEST_CUSTOMER_LOCATION;
-    }
-
-    const fromOrder =
+  const customerLocation = useMemo((): MapCoordinate | null => {
+    return (
       parseCoordinates(order?.lat, order?.lng) ||
-      parseCoordinates(order?.user?.lat, order?.user?.lng);
-
-    return fromOrder ?? TEST_CUSTOMER_LOCATION;
+      parseCoordinates(order?.user?.lat, order?.user?.lng)
+    );
   }, [order]);
 
   const providerLocation = useMemo((): MapCoordinate | null => {
-    if (USE_TEST_MAP_LOCATIONS) {
-      return TEST_PROVIDER_LOCATION;
-    }
-
     if (!location?.coords) return null;
 
     return {
@@ -300,11 +291,6 @@ export default function Track() {
     let isMounted = true;
 
     const setupLocationTracking = async () => {
-      if (USE_TEST_MAP_LOCATIONS) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
@@ -449,7 +435,7 @@ export default function Track() {
             style={styles.map}
             provider={PROVIDER_GOOGLE}
             initialRegion={mapInitialRegion}
-            showsUserLocation={!USE_TEST_MAP_LOCATIONS}
+            showsUserLocation={true}
             showsMyLocationButton={false}
             onMapReady={handleMapReady}
           >
@@ -465,19 +451,21 @@ export default function Track() {
               </Marker>
             )}
 
-            <Marker
-              coordinate={customerLocation}
-              title={order?.user?.name || t("order.customer")}
-              description={
-                order?.address ||
-                order?.user?.address ||
-                t("order.customerLocation")
-              }
-            >
-              <View style={styles.providerMarkerContainer2}>
-                <Ionicons name="person" size={10} color="#fff" />
-              </View>
-            </Marker>
+            {customerLocation && (
+              <Marker
+                coordinate={customerLocation}
+                title={order?.user?.name || t("order.customer")}
+                description={
+                  order?.address ||
+                  order?.user?.address ||
+                  t("order.customerLocation")
+                }
+              >
+                <View style={styles.providerMarkerContainer2}>
+                  <Ionicons name="person" size={10} color="#fff" />
+                </View>
+              </Marker>
+            )}
 
             {routeCoordinates.length > 1 && (
               <Polyline

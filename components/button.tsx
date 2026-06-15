@@ -45,7 +45,7 @@ export default function Button({
   const handlePress = async () => {
     if (loading) return;
     setLoading(true);
-    await onPress();
+    await onPress?.();
     setLoading(false);
   };
 
@@ -59,8 +59,8 @@ export default function Button({
         fullWidth
           ? styles.fullWidth
           : width !== undefined
-          ? { width: width as DimensionValue }
-          : null,
+            ? { width: width as DimensionValue }
+            : null,
         variant === "primary" ? styles.primary : styles.secondary,
         bgColor && { backgroundColor: bgColor },
         style,
@@ -73,14 +73,14 @@ export default function Button({
     >
       {loading ? (
         <ActivityIndicator
-          color={textColor || (variant === "primary" ? Colors.white : Colors.secondary)}
+          color={
+            textColor ||
+            (variant === "primary" ? Colors.white : Colors.secondary)
+          }
         />
       ) : (
         <View
-          style={[
-            styles.contentRow,
-            isCompact && styles.compactContentRow,
-          ]}
+          style={[styles.contentRow, isCompact && styles.compactContentRow]}
         >
           {Icon ? Icon : ""}
           <Text
@@ -101,13 +101,10 @@ export default function Button({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: vs(46),
-    paddingVertical: vs(10),
-    paddingHorizontal: s(24),
+    height: vs(56),
     borderRadius: ms(12),
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: vs(10),
   },
   compactButton: {
     minHeight: vs(36),

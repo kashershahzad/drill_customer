@@ -123,7 +123,8 @@
     "permissionDenied": "تم رفض الإذن",
     "permissionRequired": "الوصول للموقع مطلوب.",
     "error": "خطأ",
-    "errorMessage": "فشل في الحصول على الموقع."
+    "errorMessage": "فشل في الحصول على الموقع.",
+    "locationServicesDisabled": "فعّل خدمات الموقع، أو في محاكي Android عيّن موقعًا وهميًا من القائمة ⋮ > Location."
   },
   "language": {
     "language": "اللغة",
