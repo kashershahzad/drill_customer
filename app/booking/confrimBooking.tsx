@@ -51,6 +51,7 @@ export default function ConfirmBooking() {
   const [promoCode, setPromoCode] = useState("");
   const [discount, setDiscount] = useState(0);
   const [isPromoValid, setIsPromoValid] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Calculate price details
   const packagePrice = Number(params.packagePrice || 200);
@@ -81,68 +82,119 @@ export default function ConfirmBooking() {
     }
   };
 
+  const createOrder = async (tapChargeId?: string) => {
+    const userId = await AsyncStorage.getItem("user_id");
+
+    let customerLat = params.latitude;
+    let customerLng = params.longitude;
+
+    if (!customerLat || !customerLng) {
+      const storedLat = await AsyncStorage.getItem("latitude");
+      const storedLng = await AsyncStorage.getItem("longitude");
+      customerLat = storedLat || "";
+      customerLng = storedLng || "";
+    }
+
+    if (!customerLat || !customerLng) {
+      Alert.alert(t("error"), "Location is required. Please select a location.");
+      return false;
+    }
+
+    const paymentMethod = params.paymentMethodDetails || "";
+    const formData = new FormData();
+    formData.append("type", "add_data");
+    formData.append("table_name", "orders");
+    formData.append("user_id", userId || "");
+    formData.append("cat_id", params.id);
+    formData.append("address", params.location || "");
+    formData.append("lat", customerLat);
+    formData.append("lng", customerLng);
+    formData.append("date", new Date().toISOString());
+    formData.append("images", params.selectedImage || "");
+    formData.append("description", params.description || "");
+    formData.append("package_id", params.packageId || "");
+    formData.append("payment_method", paymentMethod);
+    formData.append("method_details", paymentMethod);
+    formData.append("promo_code", isPromoValid ? promoCode : "");
+    formData.append("amount", totalAmount.toString());
+    formData.append("payment_status", tapChargeId ? "paid" : "pending");
+
+    if (tapChargeId) {
+      formData.append("tap_charge_id", tapChargeId);
+    }
+
+    if (params.service_type === "schedule") {
+      formData.append("service_type", params.service_type);
+      formData.append("schedule_date", params.schedule_date || "");
+      formData.append("schedule_time", params.schedule_time || "");
+    }
+
+    const response = await apiCall(formData);
+
+    if (response.result) {
+      await AsyncStorage.setItem("order_id", JSON.stringify(response.id));
+      router.push("/booking/confrimedBooking");
+      return true;
+    }
+
+    Alert.alert(
+      t("booking.bookingFailed"),
+      response.message || t("booking.unableToProcessBooking"),
+    );
+    return false;
+  };
+
+  const payWithTap = async (paymentMethod: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append("type", "create_tap_session");
+    formData.append("amount", totalAmount.toFixed(2));
+    formData.append("currency", "SAR");
+    formData.append("payment_method", paymentMethod);
+
+    const response = await apiCall(formData);
+    const sessionId = response?.session_id;
+
+    if (!sessionId) {
+      throw new Error(response?.message || "Failed to create payment session");
+    }
+
+    return new Promise((resolve, reject) => {
+      TapSDK.onSuccess((payment) => resolve(payment.chargeId));
+      TapSDK.onFailure((error) => reject(new Error(error)));
+      TapSDK.open({
+        sessionId,
+        amount: totalAmount,
+        currency: "SAR",
+        sdkKey: response?.sdk_key,
+        merchantId: response?.merchant_id,
+      });
+    });
+  };
+
   const handleConfirmBooking = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
     try {
-      const userId = await AsyncStorage.getItem("user_id");
+      const paymentMethod = params.paymentMethodDetails || "";
+      const useTap = paymentMethod === "visa" || paymentMethod === "apple";
 
-      // Get customer location - prioritize params, fallback to AsyncStorage
-      let customerLat = params.latitude;
-      let customerLng = params.longitude;
-
-      // If lat/lng not in params, get from AsyncStorage
-      if (!customerLat || !customerLng) {
-        const storedLat = await AsyncStorage.getItem("latitude");
-        const storedLng = await AsyncStorage.getItem("longitude");
-        customerLat = storedLat || "";
-        customerLng = storedLng || "";
-      }
-
-      // Validate location data
-      if (!customerLat || !customerLng) {
-        Alert.alert(
-          t("error"),
-          "Location is required. Please select a location."
-        );
+      if (useTap) {
+        const chargeId = await payWithTap(paymentMethod);
+        await createOrder(chargeId);
         return;
       }
 
-      const formData = new FormData();
-      formData.append("type", "add_data");
-      formData.append("table_name", "orders");
-      formData.append("user_id", userId || "");
-      formData.append("cat_id", params.id);
-      formData.append("address", params.location || "");
-      formData.append("lat", customerLat);
-      formData.append("lng", customerLng);
-      formData.append("date", new Date().toISOString());
-      formData.append("images", params.selectedImage || "");
-      formData.append("description", params.description || "");
-      formData.append("package_id", params.packageId || "");
-      // IMPORTANT: Use payment method ID (paymentMethodDetails) for backend, not translated name
-      formData.append("payment_method", params.paymentMethodDetails || ""); // Use ID: visa, apple, wallet, cash
-      formData.append("method_details", params.paymentMethodDetails || "");
-      formData.append("promo_code", isPromoValid ? promoCode : "");
-      formData.append("amount", totalAmount.toString());
-      if (params.service_type === "schedule") {
-        formData.append("service_type", params.service_type);
-        formData.append("schedule_date", params.schedule_date || "");
-        formData.append("schedule_time", params.schedule_time || "");
-      }
-
-      const response = await apiCall(formData);
-
-      if (response.result) {
-        await AsyncStorage.setItem("order_id", JSON.stringify(response.id));
-        router.push("/booking/confrimedBooking");
-      } else {
-        Alert.alert(
-          t("booking.bookingFailed"),
-          response.message || t("booking.unableToProcessBooking")
-        );
-      }
+      await createOrder();
     } catch (error) {
       console.error("Booking error:", error);
-      Alert.alert(t("error"), t("booking.failedToConfirmBooking"));
+      const message =
+        error instanceof Error ? error.message : t("booking.failedToConfirmBooking");
+      if (message.toLowerCase().includes("cancel")) return;
+      Alert.alert(t("error"), message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -310,7 +362,12 @@ export default function ConfirmBooking() {
         </ScrollView>
 
         {/* Confirm Button */}
-        <Button title={t("booking.confrim")} onPress={handleConfirmBooking} style={styles.button}/>
+        <Button
+          title={isSubmitting ? t("booking.confrim") + "..." : t("booking.confrim")}
+          onPress={handleConfirmBooking}
+          style={styles.button}
+          disabled={isSubmitting}
+        />
       </View>
     </SafeAreaView>
   );
@@ -346,3 +403,89 @@ const styles = StyleSheet.create({
   serviceInfoValue: { fontSize: ms(13), fontFamily: FONTS.semiBold, color: Colors.secondary },
   button: { marginBottom: vs(14), marginTop: vs(14) },
 });
+
+type TapPayment = { chargeId: string };
+
+type TapOpenOptions = {
+  sessionId: string;
+  amount: number;
+  currency: string;
+  sdkKey?: string;
+  merchantId?: string;
+};
+
+let tapSuccessHandler: ((payment: TapPayment) => void) | null = null;
+let tapFailureHandler: ((error: string) => void) | null = null;
+
+const TapSDK = {
+  onSuccess(handler: (payment: TapPayment) => void) {
+    tapSuccessHandler = handler;
+  },
+  onFailure(handler: (error: string) => void) {
+    tapFailureHandler = handler;
+  },
+  open({ sessionId, amount, currency, sdkKey, merchantId }: TapOpenOptions) {
+    try {
+      const RNGoSell = require("@tap-payments/gosell-sdk-react-native");
+      const {
+        Languages,
+        PaymentTypes,
+        AllowedCadTypes,
+        TrxMode,
+        SDKMode,
+        SDKAppearanceMode,
+      } = RNGoSell.goSellSDKModels;
+
+      const config = {
+        appCredentials: {
+          sandbox_secrete_key: sdkKey || "",
+          production_secrete_key: sdkKey || "",
+          language: Languages.EN,
+          bundleID: "sa.com.drill.app",
+        },
+        sessionParameters: {
+          amount: amount.toFixed(2),
+          transactionCurrency: currency,
+          paymentType: PaymentTypes.ALL,
+          allowedCadTypes: AllowedCadTypes.ALL,
+          trxMode: TrxMode.PURCHASE,
+          SDKMode: SDKMode.Sandbox,
+          merchantID: merchantId || "",
+          paymentReference: { order: sessionId },
+          paymentDescription: "Drill booking",
+          appearanceMode: SDKAppearanceMode.Windowed,
+          customer: {
+            first_name: "Customer",
+            email: "customer@drill.app",
+            isdNumber: "966",
+            number: "500000000",
+          },
+        },
+      };
+
+      RNGoSell.goSellSDK.startPayment(
+        config,
+        0,
+        (_error: unknown, status?: { sdk_result?: string; charge_id?: string; sdk_error_message?: string }) => {
+          if (status?.sdk_result === "SUCCESS") {
+            tapSuccessHandler?.({
+              chargeId: String(status.charge_id || sessionId),
+            });
+            return;
+          }
+
+          if (status?.sdk_result === "FAILED" || status?.sdk_result === "SDK_ERROR") {
+            tapFailureHandler?.(status.sdk_error_message || "Payment failed");
+            return;
+          }
+
+          tapFailureHandler?.("Payment cancelled");
+        },
+      );
+    } catch (error) {
+      tapFailureHandler?.(
+        error instanceof Error ? error.message : "Unable to open Tap payment",
+      );
+    }
+  },
+};
