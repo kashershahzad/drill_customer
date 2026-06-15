@@ -101,12 +101,13 @@ export default function Button({
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: vs(56),
-    paddingVertical: vs(16),
+    minHeight: vs(46),
+    paddingVertical: vs(10),
     paddingHorizontal: s(24),
     borderRadius: ms(12),
     alignItems: "center",
     justifyContent: "center",
+    marginVertical: vs(10),
   },
   compactButton: {
     minHeight: vs(36),
