@@ -24,6 +24,7 @@ import DashedSeparator from "~/components/dashed_seprator";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
+import { BOOKING_PAY_LATER_KEY } from "~/utils/booking";
 import { ms, s, vs } from "~/utils/responsive";
 
 interface Package {
@@ -80,8 +81,7 @@ export default function Booking2Screen() {
     }
   };
 
-  const handleNext = async () => {
-    // Validate package and payment selection
+  const proceedToConfirm = async (payLater = false) => {
     if (!selectedPackage) {
       Alert.alert(
         t("booking.selectPackageRequired"),
@@ -90,7 +90,7 @@ export default function Booking2Screen() {
       return;
     }
 
-    if (!selectedPayment) {
+    if (!payLater && !selectedPayment) {
       Alert.alert(
         t("booking.selectPackageRequired"),
         t("booking.pleaseSelectPayment"),
@@ -98,11 +98,9 @@ export default function Booking2Screen() {
       return;
     }
 
-    // Validate location data
     let finalLat = params.latitude;
     let finalLng = params.longitude;
 
-    // If lat/lng not in params, try to get from AsyncStorage
     if (!finalLat || !finalLng) {
       try {
         const storedLat = await AsyncStorage.getItem("latitude");
@@ -122,17 +120,19 @@ export default function Booking2Screen() {
       return;
     }
 
-    // Prepare payment method details - Use ID for backend, translated name for display
     const selectedPaymentMethod = paymentMethods.find(
       (method) => method.id === selectedPayment,
     );
 
-    // Navigate to confirm booking with all collected data
-    // IMPORTANT: Use payment method ID (visa, apple, wallet, cash) for backend, not translated name
+    if (payLater) {
+      await AsyncStorage.setItem(BOOKING_PAY_LATER_KEY, "1");
+    } else {
+      await AsyncStorage.removeItem(BOOKING_PAY_LATER_KEY);
+    }
+
     router.push({
       pathname: "/booking/confrimBooking",
       params: {
-        // Previous screen data
         id: params.id,
         name: params.name,
         image: params.image,
@@ -144,19 +144,22 @@ export default function Booking2Screen() {
         service_type: params.service_type,
         schedule_date: params.schedule_date,
         schedule_time: params.schedule_time,
-
-        // Current screen selections
         packageId: selectedPackage.id,
         packageName: selectedPackage.name,
         packageHours: selectedPackage.hours,
         packagePrice: selectedPackage.price,
-
-        // Use translated name for display, but ID for backend
-        paymentMethod: selectedPaymentMethod?.name || "",
-        paymentMethodDetails: selectedPayment, // This is the ID (visa, apple, wallet, cash) - use this for backend
+        paymentMethod: payLater
+          ? t("later")
+          : selectedPaymentMethod?.name || "",
+        paymentMethodDetails: payLater ? "later" : selectedPayment || "",
+        payLater: payLater ? "1" : "0",
       },
     });
   };
+
+  const handleLater = () => proceedToConfirm(true);
+
+  const handleNext = () => proceedToConfirm();
 
   const handleAddCard = () => {
     router.push("/booking/addCard");
@@ -242,7 +245,7 @@ export default function Booking2Screen() {
         <View style={styles.buttonRow}>
           <Button
             title={t("later")}
-            onPress={handleNext}
+            onPress={handleLater}
             variant="secondary"
             fullWidth={false}
             width="29%"
