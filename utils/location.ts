@@ -1,10 +1,5 @@
 import * as Location from "expo-location";
 
-const DEFAULT_DEV_COORDS = {
-  latitude: 24.7136,
-  longitude: 46.6753,
-};
-
 export const getLocationPermission = async () => {
   const { status } = await Location.requestForegroundPermissionsAsync();
 
@@ -37,13 +32,6 @@ export async function getDeviceCoordinates(): Promise<{
     const lastKnown = await Location.getLastKnownPositionAsync();
     if (lastKnown?.coords) {
       return lastKnown.coords;
-    }
-
-    if (__DEV__) {
-      console.warn(
-        "Using default dev coordinates. Set emulator location via Extended controls > Location.",
-      );
-      return DEFAULT_DEV_COORDS;
     }
 
     throw currentError;

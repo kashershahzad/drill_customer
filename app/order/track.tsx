@@ -28,17 +28,6 @@ import { ms, s, vs } from "~/utils/responsive";
 type LocationStateType = Location.LocationObject;
 type MapCoordinate = { latitude: number; longitude: number };
 
-// Dev testing coords (disabled — use order API + device GPS)
-// const USE_TEST_MAP_LOCATIONS = __DEV__;
-// const TEST_PROVIDER_LOCATION: MapCoordinate = {
-//   latitude: 31.4174815,
-//   longitude: 73.104439,
-// };
-// const TEST_CUSTOMER_LOCATION: MapCoordinate = {
-//   latitude: 31.39541,
-//   longitude: 73.111622,
-// };
-
 const parseCoordinates = (
   lat?: string | number,
   lng?: string | number,
