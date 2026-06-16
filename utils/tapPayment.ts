@@ -1,9 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
+import { router } from "expo-router";
 import { apiCall } from "~/utils/api";
 
 const APP_SCHEME = "drillcustomer";
-const PAYMENT_REDIRECT_URL = `${APP_SCHEME}://tabs/order`;
+// Expo Router groups like (tabs) are omitted from deep-link paths → app/(tabs)/orders.tsx = /orders
+export const PAYMENT_REDIRECT_URL = `${APP_SCHEME}://orders`;
+export const PAYMENT_SUCCESS_ROUTE = "/(tabs)/orders" as const;
 
 type TapChargeCustomer = {
   first_name: string;
@@ -84,14 +87,17 @@ const getPaymentUrl = (response: Record<string, unknown>) => {
 };
 
 export const openTapPaymentUrl = async (url: string) => {
-  // openAuthSessionAsync use karo - yeh Chrome custom tab kholta hai
-  // aur jab redirect_url match kare to automatically app mein wapas aata hai
   const result = await WebBrowser.openAuthSessionAsync(
     url,
     PAYMENT_REDIRECT_URL,
   );
 
   console.log("[Tap] Browser session result:", result);
+
+  if (result.type === "success") {
+    router.replace(PAYMENT_SUCCESS_ROUTE);
+  }
+
   return result;
 };
 
@@ -99,18 +105,21 @@ export const createTapCharge = async (
   amount: number,
   currency: string,
   orderId: string | number,
+  tipAmount = 0,
 ) => {
   const orderIdValue = String(orderId).trim();
   if (!orderIdValue) {
     throw new Error("order_id is required for create_tap_charge");
   }
 
+  const tip = Number.isFinite(tipAmount) ? Math.max(0, tipAmount) : 0;
+  const totalAmount = amount + tip;
   const customer = await getTapChargeCustomer();
 
   const formData = new FormData();
   formData.append("type", "create_tap_charge");
   formData.append("order_id", orderIdValue);
-  formData.append("amount", amount.toFixed(2));
+  formData.append("amount", totalAmount.toFixed(2));
   formData.append("currency", "SAR");
   formData.append("first_name", customer.first_name);
   formData.append("last_name", customer.last_name);
@@ -118,12 +127,13 @@ export const createTapCharge = async (
   formData.append("country_code", customer.country_code);
   formData.append("phone", customer.phone);
   formData.append("key_type", "test");
-  // ✅ Yeh line add ki - Tap gateway ko batata hai payment ke baad kahan redirect kare
   formData.append("redirect_url", PAYMENT_REDIRECT_URL);
 
   console.log("[Tap] create_tap_charge request:", {
     order_id: orderIdValue,
-    amount: amount.toFixed(2),
+    amount: totalAmount.toFixed(2),
+    base_amount: amount.toFixed(2),
+    tip_amount: tip.toFixed(2),
     currency,
     redirect_url: PAYMENT_REDIRECT_URL,
   });

@@ -38,6 +38,7 @@ type PopupProps = {
   type: PopupType;
   orderId: string;
   onCompleted?: () => void;
+  onTipForPayment?: (tipAmount: string) => void | Promise<void>;
 };
 
 export default function Popup({
@@ -45,6 +46,7 @@ export default function Popup({
   type,
   orderId,
   onCompleted,
+  onTipForPayment,
 }: PopupProps) {
   const { t } = useTranslation();
   const [tipAmount, setTipAmount] = useState("");
@@ -92,23 +94,29 @@ export default function Popup({
     }
   };
 
+  const saveTipToOrder = async (amount: string) => {
+    if (!orderId) {
+      throw new Error("order_not_found");
+    }
+
+    const parsedOrderId = orderId.startsWith('"')
+      ? JSON.parse(orderId)
+      : orderId;
+
+    const formData = new FormData();
+    formData.append("type", "update_data");
+    formData.append("table_name", "orders");
+    formData.append("id", String(parsedOrderId));
+    formData.append("tip_amount", amount || "0");
+
+    return apiCall(formData);
+  };
+
   const handleTipSubmit = async () => {
     try {
-      if (!orderId) {
-        Alert.alert(t("error"), t("popup.orderInfoNotFound"));
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("type", "update_data");
-      formData.append("table_name", "orders");
-      formData.append("id", orderId);
-      formData.append("tip_amount", tipAmount || "0");
-
-      const response = await apiCall(formData);
+      const response = await saveTipToOrder(tipAmount);
 
       if (response && response.result === true) {
-        // Show review popup after successful tip submission
         setShowPopup("review");
       } else {
         Alert.alert(t("error"), t("popup.failedToSubmitTip"));
@@ -117,6 +125,34 @@ export default function Popup({
       console.error("Error submitting tip:", error);
       Alert.alert(t("error"), t("popup.errorSubmittingTip"));
     }
+  };
+
+  const handleTipSkip = async () => {
+    if (onTipForPayment) {
+      setShowPopup(null);
+      await onTipForPayment("0");
+      return;
+    }
+
+    setShowPopup("review");
+  };
+
+  const handleTipContinue = async () => {
+    if (onTipForPayment) {
+      const tipValue = tipAmount || "0";
+      setShowPopup(null);
+
+      try {
+        await saveTipToOrder(tipValue);
+      } catch (error) {
+        console.warn("[Tip] save failed, continuing payment:", error);
+      }
+
+      await onTipForPayment(tipValue);
+      return;
+    }
+
+    await handleTipSubmit();
   };
 
   const handleAddReview = async () => {
@@ -330,14 +366,14 @@ export default function Popup({
               variant="secondary"
               fullWidth={false}
               width="34%"
-              onPress={() => setShowPopup("review")}
+              onPress={handleTipSkip}
             />
             <Button
               title={t("continue")}
               variant="primary"
               fullWidth={false}
               width="64%"
-              onPress={handleTipSubmit}
+              onPress={handleTipContinue}
             />
           </>
         ) : type === "orderComplete" ? (

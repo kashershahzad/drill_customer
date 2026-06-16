@@ -30,8 +30,6 @@ import { createTapCharge } from "~/utils/tapPayment";
 import ChatScreen from "./chat_screen";
 import OrderDetails from "./order_details";
 
-const TAP_PAYMENT_ENABLED = true;
-
 type PopupType =
   | "timeup"
   | "tipup"
@@ -385,38 +383,43 @@ const OrderPlace: React.FC = () => {
     showToast(message, toastType as any);
   };
 
-  // ─── Pay Now: Tap payment lagao existing order ke liye ───
-  const handlePay = async () => {
-    if (isPayingNow || !orderId) return;
-    setIsPayingNow(true);
+  const processTapPayment = useCallback(
+    async (tipAmountStr: string) => {
+      if (isPayingNow || !orderId) return;
+      setIsPayingNow(true);
 
-    try {
-      const parsedOrderId = orderId.startsWith('"')
-        ? JSON.parse(orderId)
-        : orderId;
+      try {
+        const parsedOrderId = orderId.startsWith('"')
+          ? JSON.parse(orderId)
+          : orderId;
+        const amount = parseFloat(order?.amount || "0");
+        const tipAmount = parseFloat(tipAmountStr || "0") || 0;
 
-      const paymentMethod = order?.payment_method || "";
-      const amount = parseFloat(order?.amount || "0");
-
-      const useTap =
-        TAP_PAYMENT_ENABLED &&
-        paymentMethod !== "later" &&
-        (paymentMethod === "visa" || paymentMethod === "apple");
-
-      if (useTap) {
-        console.log("[Pay Now] Starting Tap payment for order:", parsedOrderId);
-        const response = await createTapCharge(amount, "SAR", parsedOrderId);
+        console.log("[Pay Now] Starting Tap payment for order:", parsedOrderId, {
+          amount,
+          tipAmount,
+          total: amount + tipAmount,
+        });
+        const response = await createTapCharge(
+          amount,
+          "SAR",
+          parsedOrderId,
+          tipAmount,
+        );
         console.log("[Pay Now] Tap payment response:", response);
-      } else {
-        // Non-tap: seedha popup dikhao
-        setPopupType("tipup");
+      } catch (error) {
+        console.error("[Pay Now] Error:", error);
+        showToast(t("order.paymentFailed") || "Payment failed", "error");
+      } finally {
+        setIsPayingNow(false);
       }
-    } catch (error) {
-      console.error("[Pay Now] Error:", error);
-      showToast(t("order.paymentFailed") || "Payment failed", "error");
-    } finally {
-      setIsPayingNow(false);
-    }
+    },
+    [isPayingNow, order?.amount, orderId, showToast, t],
+  );
+
+  const handlePay = () => {
+    if (isPayingNow || !orderId) return;
+    setPopupType("tipup");
   };
 
   const handleCancel = async () => {
@@ -576,8 +579,7 @@ const OrderPlace: React.FC = () => {
 
       {activeTab === "Details" && (
         <View style={styles.footerButtons}>
-          {order?.status === "completed" ? null : order.payment_status ===
-            "pending" ? (
+          {order.payment_status === "pending" ? (
             <Button
               title={isPayingNow ? `${t("paynow")}...` : t("paynow")}
               variant="primary"
@@ -586,7 +588,8 @@ const OrderPlace: React.FC = () => {
               onPress={handlePay}
               disabled={isPayingNow}
             />
-          ) : order.status === "pending" ||
+          ) : order?.status === "completed" ? null : order.status ===
+              "pending" ||
             order.status === "on_the_way" ||
             order.status === "arrived" ? (
             <Button
@@ -624,7 +627,11 @@ const OrderPlace: React.FC = () => {
           <View style={styles.overlay}>
             <TouchableOpacity
               style={styles.overlayBackground}
-              onPress={() => popupType !== "arrived" && setPopupType(null)}
+              onPress={() => {
+                if (popupType !== "arrived") {
+                  setPopupType(null);
+                }
+              }}
             />
             <View style={styles.popupContainer}>
               <Popup
@@ -632,6 +639,9 @@ const OrderPlace: React.FC = () => {
                 setShowPopup={setPopupType}
                 orderId={orderId || ""}
                 onCompleted={handleOrderCompleted}
+                onTipForPayment={
+                  popupType === "tipup" ? processTapPayment : undefined
+                }
               />
             </View>
           </View>

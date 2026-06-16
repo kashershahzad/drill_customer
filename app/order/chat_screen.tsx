@@ -19,8 +19,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import {
+  getInputFontSize,
+  INPUT_ICON_SIZE,
+  inputFieldStyles,
+} from "~/components/inputfield";
 import { Colors } from "~/constants/Colors";
-import { getInputFontSize, inputFieldStyles, INPUT_ICON_SIZE } from "~/components/inputfield";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
 import { ms, s, vs } from "~/utils/responsive";
@@ -127,7 +131,8 @@ export default function ChatScreen() {
   const [userInfo, setUserInfo] = useState<any>(null);
   const [providerInfo, setProviderInfo] = useState<any>(null);
   const [supportRequired, setSupportRequired] = useState<boolean>(false);
-  const [hasShownSupportMessage, setHasShownSupportMessage] = useState<boolean>(false);
+  const [hasShownSupportMessage, setHasShownSupportMessage] =
+    useState<boolean>(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const isSendingRef = useRef<boolean>(false);
@@ -166,7 +171,7 @@ export default function ChatScreen() {
           intervalRef.current = null;
         }
       };
-    }, [])
+    }, []),
   );
 
   const fetchOrderDetails = async (orderIdParam: string) => {
@@ -179,13 +184,15 @@ export default function ChatScreen() {
       const response = await apiCall(formData);
       if (response && response.data && response.data.length > 0) {
         const orderData = response.data[0];
-        const isSupportRequired = orderData.support_required === "1" || orderData.support_required === 1;
-        
+        const isSupportRequired =
+          orderData.support_required === "1" ||
+          orderData.support_required === 1;
+
         // If support was just requested (changed from false to true), show the message
         if (isSupportRequired && !supportRequired) {
           setHasShownSupportMessage(true);
         }
-        
+
         setSupportRequired(isSupportRequired);
       }
     } catch (error) {
@@ -196,7 +203,7 @@ export default function ChatScreen() {
   const fetchChatHistory = async (
     orderIdParam: string,
     userIdParam: string,
-    showLoading = true
+    showLoading = true,
   ) => {
     if (showLoading) {
       setIsLoading(true);
@@ -210,9 +217,10 @@ export default function ChatScreen() {
 
     try {
       const response = await apiCall(formData);
+      // console.log("chat history", response);
       if (response && response.chat) {
         const fromId = response.user.id;
-        
+
         // Store user and provider info
         if (response.user) {
           setUserInfo(response.user);
@@ -220,32 +228,42 @@ export default function ChatScreen() {
         if (response.provider) {
           setProviderInfo(response.provider);
         }
-        
+
         const formattedMessages = response.chat.map((msg: any) => {
           const isUser = msg.from_id === fromId;
           // Check if message is from support agent (usually identified by user_type or role)
-          const isSupportAgent = msg.user_type === "support_agent" || 
-                                 msg.role === "support_agent" ||
-                                 msg.from_id !== fromId && msg.from_id !== response.provider?.id;
-          
+          const isSupportAgent =
+            msg.user_type === "support_agent" ||
+            msg.role === "support_agent" ||
+            (msg.from_id !== fromId && msg.from_id !== response.provider?.id);
+
           let sender: "user" | "provider" | "support_agent" = "provider";
           let senderInfo = response.provider;
-          
+
           if (isUser) {
             sender = "user";
             senderInfo = response.user;
-          } else if (isSupportAgent || msg.sender_name?.toLowerCase().includes("support")) {
+          } else if (
+            isSupportAgent ||
+            msg.sender_name?.toLowerCase().includes("support")
+          ) {
             sender = "support_agent";
             senderInfo = { name: "Support Agent", image: null };
           }
-          
+
           return {
             id: msg.id,
             text: msg.msg,
             sender: sender,
             timestamp: Number(msg.datetime),
             msgType: msg.msg_type === "file" ? "file" : "msg",
-            senderName: senderInfo?.name || (isUser ? "You" : sender === "support_agent" ? "Support Agent" : "Provider"),
+            senderName:
+              senderInfo?.name ||
+              (isUser
+                ? "You"
+                : sender === "support_agent"
+                  ? "Support Agent"
+                  : "Provider"),
             senderImage: senderInfo?.image || null,
           };
         });
@@ -254,15 +272,17 @@ export default function ChatScreen() {
         let finalMessages = formattedMessages.reverse();
         if (supportRequired && hasShownSupportMessage) {
           const supportMessageExists = finalMessages.some(
-            (msg: Message) => msg.sender === "system" && msg.text.includes("Support Agent Added")
+            (msg: Message) =>
+              msg.sender === "system" &&
+              msg.text.includes("Support Agent Added"),
           );
-          
+
           if (!supportMessageExists) {
             // Find the position to insert the system message (after user messages requesting support)
             const insertIndex = finalMessages.findIndex(
-              (msg: Message) => msg.sender === "user" && msg.timestamp > 0
+              (msg: Message) => msg.sender === "user" && msg.timestamp > 0,
             );
-            
+
             const systemMessage = {
               id: `support-added-${Date.now()}`,
               text: "Support Agent Added",
@@ -272,7 +292,7 @@ export default function ChatScreen() {
               senderName: "",
               senderImage: null,
             };
-            
+
             if (insertIndex >= 0) {
               finalMessages.splice(insertIndex + 1, 0, systemMessage);
             } else {
@@ -331,7 +351,8 @@ export default function ChatScreen() {
       return;
     }
 
-    if (!orderId || !userId || (inputMessage.trim() === "" && !attachment)) return;
+    if (!orderId || !userId || (inputMessage.trim() === "" && !attachment))
+      return;
 
     try {
       isSendingRef.current = true;
@@ -389,18 +410,14 @@ export default function ChatScreen() {
   const confirmDeleteMessage = (messageId: string) => {
     if (!userId) return;
 
-    Alert.alert(
-      t("order.deleteMessage"),
-      t("order.deleteConfirm"),
-      [
-        { text: t("cancel"), style: "cancel" },
-        {
-          text: t("order.deleteMessage"),
-          style: "destructive",
-          onPress: () => deleteMessage(messageId, userId),
-        },
-      ]
-    );
+    Alert.alert(t("order.deleteMessage"), t("order.deleteConfirm"), [
+      { text: t("cancel"), style: "cancel" },
+      {
+        text: t("order.deleteMessage"),
+        style: "destructive",
+        onPress: () => deleteMessage(messageId, userId),
+      },
+    ]);
   };
 
   const deleteMessage = async (messageId: string, userIdParam: string) => {
@@ -425,10 +442,7 @@ export default function ChatScreen() {
     if (source === "camera") {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          t("order.permissionNeeded"),
-          t("order.cameraPermission")
-        );
+        Alert.alert(t("order.permissionNeeded"), t("order.cameraPermission"));
         return;
       }
       result = await ImagePicker.launchCameraAsync({
@@ -440,10 +454,7 @@ export default function ChatScreen() {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert(
-          t("order.permissionNeeded"),
-          t("order.galleryPermission")
-        );
+        Alert.alert(t("order.permissionNeeded"), t("order.galleryPermission"));
         return;
       }
       result = await ImagePicker.launchImageLibraryAsync({
@@ -487,7 +498,6 @@ export default function ChatScreen() {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -509,17 +519,22 @@ export default function ChatScreen() {
                 // Handle system messages (Support Agent Added)
                 if (message.sender === "system") {
                   return (
-                    <View key={message.id} style={styles.systemMessageContainer}>
+                    <View
+                      key={message.id}
+                      style={styles.systemMessageContainer}
+                    >
                       <View style={styles.systemMessageLine} />
-                      <Text style={styles.systemMessageText}>{message.text}</Text>
+                      <Text style={styles.systemMessageText}>
+                        {message.text}
+                      </Text>
                       <View style={styles.systemMessageLine} />
                     </View>
                   );
                 }
 
-                const showProfile = index === 0 || 
-                  messages[index - 1].sender !== message.sender;
-                
+                const showProfile =
+                  index === 0 || messages[index - 1].sender !== message.sender;
+
                 return (
                   <View
                     key={message.id}
@@ -527,23 +542,28 @@ export default function ChatScreen() {
                       message.sender === "user"
                         ? styles.userMessageContainer
                         : message.sender === "support_agent"
-                        ? styles.supportAgentMessageContainer
-                        : styles.providerMessageContainer
+                          ? styles.supportAgentMessageContainer
+                          : styles.providerMessageContainer
                     }
                   >
-                    {(message.sender === "provider" || message.sender === "support_agent") && (
+                    {(message.sender === "provider" ||
+                      message.sender === "support_agent") && (
                       <View style={styles.providerInfoContainer}>
                         {showProfile && (
                           <>
                             {message.sender === "support_agent" ? (
                               <View style={styles.supportAgentIcon}>
-                                <Text style={styles.supportAgentIconText}>🎧</Text>
+                                <Text style={styles.supportAgentIconText}>
+                                  🎧
+                                </Text>
                               </View>
                             ) : (
                               <Image
                                 source={
                                   message.senderImage
-                                    ? { uri: `${IMAGE_BASE_URL}${message.senderImage}` }
+                                    ? {
+                                        uri: `${IMAGE_BASE_URL}${message.senderImage}`,
+                                      }
                                     : require("@/assets/images/default-profile.png")
                                 }
                                 style={styles.profileImage}
@@ -566,8 +586,8 @@ export default function ChatScreen() {
                         message.sender === "user"
                           ? styles.userMessage
                           : message.sender === "support_agent"
-                          ? styles.supportAgentMessage
-                          : styles.providerMessage
+                            ? styles.supportAgentMessage
+                            : styles.providerMessage
                       }
                     >
                       {message.msgType === "file" && (
@@ -602,7 +622,10 @@ export default function ChatScreen() {
             </TouchableOpacity>
             <View style={styles.inputFieldContainer}>
               <TextInput
-                style={[styles.chatInput, { fontSize: getInputFontSize(inputMessage) }]}
+                style={[
+                  styles.chatInput,
+                  { fontSize: getInputFontSize(inputMessage) },
+                ]}
                 value={inputMessage}
                 onChangeText={(text) => setInputMessage(text)}
                 placeholder={
@@ -635,10 +658,16 @@ export default function ChatScreen() {
             </View>
             <TouchableOpacity
               onPress={sendMessage}
-              disabled={(inputMessage.trim() === "" && !attachment) || isLoading || isSendingRef.current}
+              disabled={
+                (inputMessage.trim() === "" && !attachment) ||
+                isLoading ||
+                isSendingRef.current
+              }
               style={[
                 styles.sendButton,
-                (inputMessage.trim() === "" && !attachment) || isLoading || isSendingRef.current
+                (inputMessage.trim() === "" && !attachment) ||
+                isLoading ||
+                isSendingRef.current
                   ? styles.disabledSendButton
                   : {},
               ]}
@@ -656,7 +685,9 @@ export default function ChatScreen() {
         >
           <View style={styles.modalContainer}>
             <View style={styles.emojiPickerHeader}>
-              <Text style={styles.emojiPickerTitle}>{t("order.selectEmoji")}</Text>
+              <Text style={styles.emojiPickerTitle}>
+                {t("order.selectEmoji")}
+              </Text>
               <TouchableOpacity onPress={() => setIsEmojiPickerVisible(false)}>
                 <Text style={styles.closeButton}>{t("order.close")}</Text>
               </TouchableOpacity>
@@ -693,14 +724,18 @@ export default function ChatScreen() {
                 style={styles.mediaOption}
                 onPress={() => pickImage("camera")}
               >
-                <Text style={styles.mediaOptionText}>{t("order.takePhoto")}</Text>
+                <Text style={styles.mediaOptionText}>
+                  {t("order.takePhoto")}
+                </Text>
               </TouchableOpacity>
               <View style={styles.mediaDivider} />
               <TouchableOpacity
                 style={styles.mediaOption}
                 onPress={() => pickImage("gallery")}
               >
-                <Text style={styles.mediaOptionText}>{t("order.chooseFromGallery")}</Text>
+                <Text style={styles.mediaOptionText}>
+                  {t("order.chooseFromGallery")}
+                </Text>
               </TouchableOpacity>
               <View style={styles.mediaDivider} />
               <TouchableOpacity
@@ -720,25 +755,117 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   chatContainer: { flex: 1, backgroundColor: Colors.white },
-  scrollViewContent: { paddingHorizontal: s(14), paddingTop: vs(14), flexGrow: 1, paddingBottom: vs(10) },
-  userMessageContainer: { alignSelf: "flex-end", alignItems: "flex-end", marginBottom: vs(10), maxWidth: "80%" },
-  providerMessageContainer: { flexDirection: "column", alignSelf: "flex-start", alignItems: "flex-start", marginBottom: vs(10), maxWidth: "80%" },
-  supportAgentMessageContainer: { flexDirection: "column", alignSelf: "flex-start", alignItems: "flex-start", marginBottom: vs(10), maxWidth: "80%" },
-  systemMessageContainer: { flexDirection: "row", alignItems: "center", justifyContent: "center", marginVertical: vs(14), width: "100%" },
-  systemMessageLine: { flex: 1, height: 1, backgroundColor: Colors.gray, marginHorizontal: s(7) },
-  systemMessageText: { fontSize: ms(12), fontFamily: FONTS.medium, color: Colors.secondary300 },
-  supportAgentIcon: { width: s(34), height: s(34), borderRadius: ms(17), backgroundColor: Colors.primary300, justifyContent: "center", alignItems: "center" },
+  scrollViewContent: {
+    paddingHorizontal: s(14),
+    paddingTop: vs(14),
+    flexGrow: 1,
+    paddingBottom: vs(10),
+  },
+  userMessageContainer: {
+    alignSelf: "flex-end",
+    alignItems: "flex-end",
+    marginBottom: vs(10),
+    maxWidth: "80%",
+  },
+  providerMessageContainer: {
+    flexDirection: "column",
+    alignSelf: "flex-start",
+    alignItems: "flex-start",
+    marginBottom: vs(10),
+    maxWidth: "80%",
+  },
+  supportAgentMessageContainer: {
+    flexDirection: "column",
+    alignSelf: "flex-start",
+    alignItems: "flex-start",
+    marginBottom: vs(10),
+    maxWidth: "80%",
+  },
+  systemMessageContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: vs(14),
+    width: "100%",
+  },
+  systemMessageLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.gray,
+    marginHorizontal: s(7),
+  },
+  systemMessageText: {
+    fontSize: ms(12),
+    fontFamily: FONTS.medium,
+    color: Colors.secondary300,
+  },
+  supportAgentIcon: {
+    width: s(34),
+    height: s(34),
+    borderRadius: ms(17),
+    backgroundColor: Colors.primary300,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   supportAgentIconText: { fontSize: ms(18) },
-  supportAgentMessage: { backgroundColor: Colors.gray100, padding: s(11), borderRadius: ms(14), borderBottomStartRadius: 4, maxWidth: "100%" },
-  providerInfoContainer: { flexDirection: "row", alignItems: "center", marginBottom: vs(4), gap: s(7), width: "100%" },
-  profileImage: { width: s(34), height: s(34), borderRadius: ms(17), backgroundColor: Colors.gray100 },
+  supportAgentMessage: {
+    backgroundColor: Colors.gray100,
+    padding: s(11),
+    borderRadius: ms(14),
+    borderBottomStartRadius: 4,
+    maxWidth: "100%",
+  },
+  providerInfoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: vs(4),
+    gap: s(7),
+    width: "100%",
+  },
+  profileImage: {
+    width: s(34),
+    height: s(34),
+    borderRadius: ms(17),
+    backgroundColor: Colors.gray100,
+  },
   profileImagePlaceholder: { width: s(34), height: s(34) },
-  senderName: { fontSize: ms(12), fontFamily: FONTS.medium, color: Colors.secondary },
-  userMessage: { backgroundColor: Colors.success100, padding: s(11), borderRadius: ms(14), borderBottomEndRadius: 4, maxWidth: "100%" },
-  providerMessage: { backgroundColor: Colors.gray100, padding: s(11), borderRadius: ms(14), borderBottomStartRadius: 4, maxWidth: "100%" },
-  messageText: { color: Colors.secondary, fontSize: ms(15), fontFamily: FONTS.regular },
-  messageImage: { width: s(180), height: s(180), borderRadius: ms(8), marginBottom: vs(7) },
-  chatInputContainer: { flexDirection: "row", width: "100%", alignItems: "center", paddingVertical: vs(7), justifyContent: "space-between" },
+  senderName: {
+    fontSize: ms(12),
+    fontFamily: FONTS.medium,
+    color: Colors.secondary,
+  },
+  userMessage: {
+    backgroundColor: Colors.success100,
+    padding: s(11),
+    borderRadius: ms(14),
+    borderBottomEndRadius: 4,
+    maxWidth: "100%",
+  },
+  providerMessage: {
+    backgroundColor: Colors.gray100,
+    padding: s(11),
+    borderRadius: ms(14),
+    borderBottomStartRadius: 4,
+    maxWidth: "100%",
+  },
+  messageText: {
+    color: Colors.secondary,
+    fontSize: ms(15),
+    fontFamily: FONTS.regular,
+  },
+  messageImage: {
+    width: s(180),
+    height: s(180),
+    borderRadius: ms(8),
+    marginBottom: vs(7),
+  },
+  chatInputContainer: {
+    flexDirection: "row",
+    width: "100%",
+    alignItems: "center",
+    paddingVertical: vs(7),
+    justifyContent: "space-between",
+  },
   inputFieldContainer: {
     ...inputFieldStyles.fieldContainer,
     flex: 1,
@@ -750,26 +877,105 @@ const styles = StyleSheet.create({
   },
   sendButton: { backgroundColor: Colors.white },
   disabledSendButton: { opacity: 0.5 },
-  modalContainer: { flex: 1, backgroundColor: Colors.white, marginTop: "50%", borderTopLeftRadius: ms(20), borderTopRightRadius: ms(20), overflow: "hidden" },
-  emojiPickerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: s(14), borderBottomWidth: 1, borderBottomColor: Colors.gray100 },
-  emojiPickerTitle: { fontSize: ms(17), fontFamily: FONTS.semiBold, color: Colors.secondary },
-  closeButton: { color: Colors.primary, fontSize: ms(15), fontFamily: FONTS.semiBold },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Colors.white,
+    marginTop: "50%",
+    borderTopLeftRadius: ms(20),
+    borderTopRightRadius: ms(20),
+    overflow: "hidden",
+  },
+  emojiPickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: s(14),
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.gray100,
+  },
+  emojiPickerTitle: {
+    fontSize: ms(17),
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+  },
+  closeButton: {
+    color: Colors.primary,
+    fontSize: ms(15),
+    fontFamily: FONTS.semiBold,
+  },
   emojiScrollView: { flex: 1 },
-  emojiGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", padding: s(9) },
-  emojiButton: { width: "20%", aspectRatio: 1, alignItems: "center", justifyContent: "center", padding: s(9) },
+  emojiGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    padding: s(9),
+  },
+  emojiButton: {
+    width: "20%",
+    aspectRatio: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: s(9),
+  },
   emojiText: { fontSize: ms(22), fontFamily: FONTS.regular },
-  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" },
-  mediaPickerContainer: { backgroundColor: Colors.white, borderTopLeftRadius: ms(20), borderTopRightRadius: ms(20), padding: s(8) },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  mediaPickerContainer: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: ms(20),
+    borderTopRightRadius: ms(20),
+    padding: s(8),
+  },
   mediaOption: { paddingVertical: vs(14), alignItems: "center" },
-  mediaOptionText: { fontSize: ms(17), fontFamily: FONTS.regular, color: Colors.primary },
+  mediaOptionText: {
+    fontSize: ms(17),
+    fontFamily: FONTS.regular,
+    color: Colors.primary,
+  },
   mediaDivider: { height: 1, backgroundColor: Colors.gray100 },
   cancelButton: { marginTop: vs(7) },
   cancelText: { fontSize: ms(17), color: "red", fontFamily: FONTS.semiBold },
   inlineAttachmentContainer: { position: "relative", marginRight: s(7) },
   inlineAttachment: { width: s(38), height: s(38), borderRadius: ms(4) },
-  removeInlineAttachment: { position: "absolute", top: -vs(7), right: -s(7), backgroundColor: Colors.secondary, width: s(17), height: s(17), borderRadius: ms(9), justifyContent: "center", alignItems: "center" },
-  removeButtonText: { color: Colors.white, fontSize: ms(12), fontFamily: FONTS.bold },
-  noMessagesContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: s(36) },
-  noMessagesText: { color: Colors.gray, fontSize: ms(15), fontFamily: FONTS.regular },
-  loadingOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.7)", justifyContent: "center", alignItems: "center", zIndex: 999 },
+  removeInlineAttachment: {
+    position: "absolute",
+    top: -vs(7),
+    right: -s(7),
+    backgroundColor: Colors.secondary,
+    width: s(17),
+    height: s(17),
+    borderRadius: ms(9),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  removeButtonText: {
+    color: Colors.white,
+    fontSize: ms(12),
+    fontFamily: FONTS.bold,
+  },
+  noMessagesContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: s(36),
+  },
+  noMessagesText: {
+    color: Colors.gray,
+    fontSize: ms(15),
+    fontFamily: FONTS.regular,
+  },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(255,255,255,0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 999,
+  },
 });
