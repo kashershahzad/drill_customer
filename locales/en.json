@@ -286,6 +286,7 @@
     "errorCancelling": "An error occurred while cancelling the order",
     "failedToComplete": "Failed to complete order",
     "errorCompleting": "An error occurred while completing the order",
+    "completeOrder": "Complete Order",
     "trackCustomer": "Track Customer",
     "estimatedArrival": "You are estimated to arrive at the customers location in 13 minutes",
     "orderAcceptedStatus": "Order\nAccepted",

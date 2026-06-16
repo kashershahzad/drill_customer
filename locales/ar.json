@@ -286,6 +286,7 @@
     "errorCancelling": "حدث خطأ أثناء إلغاء الطلب",
     "failedToComplete": "فشل إكمال الطلب",
     "errorCompleting": "حدث خطأ أثناء إكمال الطلب",
+    "completeOrder": "إكمال الطلب",
     "trackCustomer": "تتبع العميل",
     "estimatedArrival": "من المتوقع وصولك إلى موقع العميل خلال 13 دقيقة",
     "orderAcceptedStatus": "تم قبول\nالطلب",

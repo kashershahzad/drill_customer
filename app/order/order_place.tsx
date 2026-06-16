@@ -62,6 +62,7 @@ const OrderPlace: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isPayingNow, setIsPayingNow] = useState(false);
+  const [manualCompletionFlow, setManualCompletionFlow] = useState(false);
   const [order, setOrder] = useState<OrderType | null>(null);
   const lastShownStatusRef = useRef<string | null>(null);
   const proximityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -422,6 +423,21 @@ const OrderPlace: React.FC = () => {
     setPopupType("tipup");
   };
 
+  const handleCompleteOrder = () => {
+    if (!orderId || order?.status === "completed") return;
+    setManualCompletionFlow(true);
+    setPopupType("time-up");
+  };
+
+  const handleCompleteToReview = () => {
+    setPopupType("review");
+  };
+
+  const closePopup = () => {
+    setPopupType(null);
+    setManualCompletionFlow(false);
+  };
+
   const handleCancel = async () => {
     const userId = await AsyncStorage.getItem("user_id");
     const latitude = await AsyncStorage.getItem("latitude");
@@ -478,6 +494,7 @@ const OrderPlace: React.FC = () => {
       try {
         const response = await apiCall(formData);
         if (response && response.result === true) {
+          setManualCompletionFlow(false);
           setPopupType(null);
           router.replace("/(tabs)");
         } else {
@@ -588,8 +605,16 @@ const OrderPlace: React.FC = () => {
               onPress={handlePay}
               disabled={isPayingNow}
             />
-          ) : order?.status === "completed" ? null : order.status ===
-              "pending" ||
+          ) : order?.status === "completed" ? null : order.payment_status ===
+            "paid" ? (
+            <Button
+              title={t("order.completeOrder")}
+              variant="primary"
+              fullWidth={true}
+              width="100%"
+              onPress={handleCompleteOrder}
+            />
+          ) : order.status === "pending" ||
             order.status === "on_the_way" ||
             order.status === "arrived" ? (
             <Button
@@ -629,7 +654,7 @@ const OrderPlace: React.FC = () => {
               style={styles.overlayBackground}
               onPress={() => {
                 if (popupType !== "arrived") {
-                  setPopupType(null);
+                  closePopup();
                 }
               }}
             />
@@ -639,6 +664,9 @@ const OrderPlace: React.FC = () => {
                 setShowPopup={setPopupType}
                 orderId={orderId || ""}
                 onCompleted={handleOrderCompleted}
+                onCompleteToReview={
+                  manualCompletionFlow ? handleCompleteToReview : undefined
+                }
                 onTipForPayment={
                   popupType === "tipup" ? processTapPayment : undefined
                 }

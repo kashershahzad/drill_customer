@@ -39,6 +39,7 @@ type PopupProps = {
   orderId: string;
   onCompleted?: () => void;
   onTipForPayment?: (tipAmount: string) => void | Promise<void>;
+  onCompleteToReview?: () => void;
 };
 
 export default function Popup({
@@ -47,6 +48,7 @@ export default function Popup({
   orderId,
   onCompleted,
   onTipForPayment,
+  onCompleteToReview,
 }: PopupProps) {
   const { t } = useTranslation();
   const [tipAmount, setTipAmount] = useState("");
@@ -257,7 +259,13 @@ export default function Popup({
             variant="secondary"
             fullWidth={false}
             width="34%"
-            onPress={handleComplete}
+            onPress={() => {
+              if (onCompleteToReview) {
+                onCompleteToReview();
+              } else {
+                handleComplete();
+              }
+            }}
           />
           <Button
             title={t("popup.moveHigher")}
