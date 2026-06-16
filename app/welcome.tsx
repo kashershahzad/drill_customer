@@ -84,7 +84,6 @@ const styles = StyleSheet.create({
   },
   image: {
     width: "100%",
-    height: vs(280),
     marginBottom: vs(8),
   },
   textContainer: {

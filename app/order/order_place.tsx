@@ -692,7 +692,6 @@ const styles = StyleSheet.create({
     width: "100%",
     borderTopLeftRadius: ms(20),
     borderTopRightRadius: ms(20),
-    minHeight: "50%",
     justifyContent: "center",
     alignItems: "center",
   },
