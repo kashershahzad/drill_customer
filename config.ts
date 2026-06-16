@@ -1,7 +1,6 @@
 export const BASE_URL = "https://7tracking.com/saudiservices/api.php";
 
 /** Tap Payments sandbox public key (tokenization on client, charge on backend). */
-export const TAP_PUBLIC_KEY = "";
 
 /**
  * Privacy Policy URL – use the same URL in App Store Connect > App Information > Privacy Policy URL.
