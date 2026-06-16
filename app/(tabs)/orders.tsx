@@ -95,6 +95,10 @@ export default function Orders() {
   };
 
   const handleOrderScreen = (order: Order) => {
+    if (order.status?.toLowerCase() === "cancelled") {
+      return; // or showToast("This order was cancelled")
+    }
+  
     AsyncStorage.setItem("order_id", order.id).then(() => {
       router.push("/order/order_place");
     });

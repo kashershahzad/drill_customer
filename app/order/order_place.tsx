@@ -445,7 +445,7 @@ const OrderPlace: React.FC = () => {
     if (orderId) {
       const formData = new FormData();
       formData.append("type", "add_data");
-      formData.append("table_name", "orders");
+      formData.append("table_name", "orders_history");
       formData.append("user_id", userId);
       formData.append("lat", latitude || "");
       formData.append("lng", longitude || "");

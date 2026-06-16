@@ -13,11 +13,13 @@ type ServiceDetailsCardProps = {
   order: Order;
   orderScreen?: boolean;
   onPress?: () => void;
+  disabled?: boolean;
 };
 
 export default function ServiceDetailsCard({
   order,
   onPress,
+  disabled,
 }: ServiceDetailsCardProps) {
   const { t } = useTranslation();
   // Function to format schedule date and time
@@ -40,6 +42,8 @@ export default function ServiceDetailsCard({
         minute: "2-digit",
         hour12: true,
       });
+
+
 
       return `${formattedDate} at ${formattedTime}`;
     } catch (error) {
@@ -66,11 +70,15 @@ export default function ServiceDetailsCard({
     }
   };
 
+  const isCancelled = order.status?.toLowerCase() === "cancelled";
+  const isDisabled = isCancelled || disabled;
+
+
   // Get the status style for the current order
   const statusStyle = getStatusStyle(order.status);
   console.log("order?.paymentStatus", order?.payment_status);
   return (
-    <TouchableOpacity onPress={onPress} style={styles.card} activeOpacity={0.7}>
+    <TouchableOpacity onPress={isDisabled ? undefined : onPress} disabled={isDisabled} activeOpacity={isDisabled ? 1 : 0.7} style={[styles.card, isDisabled && styles.cardDisabled]}>
       {/* Order Top Section */}
       <View style={styles.orderTopSection}>
         <Image
@@ -215,6 +223,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.01,
     shadowRadius: 6,
     elevation: 2,
+  },
+  cardDisabled: {
+    opacity: 0.55,
   },
   orderTopSection: { flexDirection: "row", alignItems: "center", gap: s(14) },
   image: { height: s(60), width: s(60), borderRadius: ms(8), backgroundColor: Colors.white, padding: s(10) },
