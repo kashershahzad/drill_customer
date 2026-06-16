@@ -30,8 +30,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Button from "~/components/button";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 
 type User = {
   name: string;
@@ -339,7 +339,7 @@ export default function EditProfile() {
             </View>
 
             {error && <Text style={styles.errorText}>{error}</Text>}
-            <Button onPress={handleUpdate} title={t("account.update")} />
+            <Button onPress={handleUpdate} title={t("account.update")} style={styles.updateButton} />
           </ScrollView>
         )}
       </KeyboardAvoidingView>
@@ -362,4 +362,5 @@ const styles = StyleSheet.create({
   rowContainer: { flexDirection: "row", gap: s(20) },
   flexItem: { flex: 1 },
   errorText: { color: "red", textAlign: "center", marginTop: vs(10), fontFamily: FONTS.medium, fontSize: ms(13) },
+  updateButton: { marginTop: vs(20) },
 });
