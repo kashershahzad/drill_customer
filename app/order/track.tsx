@@ -510,7 +510,7 @@ export default function Track() {
                   status === "OnTheWay" ? styles.activeStatusText : {},
                 ]}
               >
-                {t("order.onTheWay")}
+                {t("order.onTheWayStatus")}
               </Text>
             </View>
             <View
@@ -637,7 +637,8 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: ms(12),
     fontFamily: FONTS.semiBold,
-    textAlign: "center",
+    textAlign: "left",
+    paddingLeft: s(5),
     maxWidth: "80%",
   },
   content: { paddingHorizontal: s(16) },
