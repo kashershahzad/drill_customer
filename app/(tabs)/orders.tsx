@@ -1,6 +1,6 @@
+import Button from "@/components/button";
 import Header from "@/components/header";
 import ServiceDetailsCard from "@/components/service_details_card";
-import Button from "@/components/button";
 import { Colors } from "@/constants/Colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
@@ -16,10 +16,10 @@ import {
 } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth } from "~/contexts/AuthContext";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
+import { useAuth } from "~/contexts/AuthContext";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 
 // Order type definition
 export type Order = {
@@ -105,7 +105,7 @@ export default function Orders() {
     filterStatus === "All"
       ? orders
       : orders.filter(
-          (order) => order.status.toLowerCase() === filterStatus.toLowerCase()
+          (order) => order.status.toLowerCase() === filterStatus.toLowerCase(),
         );
 
   if (!isLoggedIn) {

@@ -1,7 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
-import { Linking } from "react-native";
 import { apiCall } from "~/utils/api";
+
+const APP_SCHEME = "drillcustomer";
+const PAYMENT_REDIRECT_URL = `${APP_SCHEME}://tabs/order`;
 
 type TapChargeCustomer = {
   first_name: string;
@@ -76,20 +78,21 @@ const getPaymentUrl = (response: Record<string, unknown>) => {
     (response?.result as Record<string, unknown> | undefined)?.url,
   ];
 
-  const paymentUrl = candidates.find(
+  return candidates.find(
     (value) => typeof value === "string" && value.startsWith("http"),
-  );
-
-  return paymentUrl as string | undefined;
+  ) as string | undefined;
 };
 
 export const openTapPaymentUrl = async (url: string) => {
-  const canOpen = await Linking.canOpenURL(url);
-  if (!canOpen) {
-    throw new Error("Unable to open payment URL");
-  }
+  // openAuthSessionAsync use karo - yeh Chrome custom tab kholta hai
+  // aur jab redirect_url match kare to automatically app mein wapas aata hai
+  const result = await WebBrowser.openAuthSessionAsync(
+    url,
+    PAYMENT_REDIRECT_URL,
+  );
 
-  await WebBrowser.openBrowserAsync(url);
+  console.log("[Tap] Browser session result:", result);
+  return result;
 };
 
 export const createTapCharge = async (
@@ -115,16 +118,14 @@ export const createTapCharge = async (
   formData.append("country_code", customer.country_code);
   formData.append("phone", customer.phone);
   formData.append("key_type", "test");
+  // ✅ Yeh line add ki - Tap gateway ko batata hai payment ke baad kahan redirect kare
+  formData.append("redirect_url", PAYMENT_REDIRECT_URL);
 
   console.log("[Tap] create_tap_charge request:", {
     order_id: orderIdValue,
     amount: amount.toFixed(2),
     currency,
-    first_name: customer.first_name,
-    last_name: customer.last_name,
-    email: customer.email,
-    phone_number: customer.phone,
-    key_type: "test",
+    redirect_url: PAYMENT_REDIRECT_URL,
   });
 
   const response = await apiCall(formData);

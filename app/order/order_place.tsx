@@ -26,8 +26,11 @@ import {
   setupNotificationListeners,
 } from "~/utils/notification";
 import { ms, s, vs } from "~/utils/responsive";
+import { createTapCharge } from "~/utils/tapPayment";
 import ChatScreen from "./chat_screen";
 import OrderDetails from "./order_details";
+
+const TAP_PAYMENT_ENABLED = true;
 
 type PopupType =
   | "timeup"
@@ -52,7 +55,7 @@ const OrderPlace: React.FC = () => {
   const { showToast } = useToast();
   const { tab } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState<string>(
-    tab ? String(tab) : "Details"
+    tab ? String(tab) : "Details",
   );
   const [popupType, setPopupType] = useState<PopupType | null>(null);
   const [showPopup, setShowPopup] = useState(false);
@@ -60,6 +63,7 @@ const OrderPlace: React.FC = () => {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPayingNow, setIsPayingNow] = useState(false);
   const [order, setOrder] = useState<OrderType | null>(null);
   const lastShownStatusRef = useRef<string | null>(null);
   const proximityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -143,7 +147,7 @@ const OrderPlace: React.FC = () => {
       return () => {
         stopProximityCheck();
       };
-    }, [])
+    }, []),
   );
 
   const getOrderDetails = async (id: string) => {
@@ -156,19 +160,19 @@ const OrderPlace: React.FC = () => {
 
     try {
       const response = await apiCall(formData);
+      console.log("order details", response);
 
       if (response && response.data && response.data.length > 0) {
         const orderData = response.data[0];
 
         if (order && order.status !== orderData.status) {
-          // Status changed - handle the change (ref will be set in showStatusNotification)
-          handleOrderStatusChange(order.status, orderData.status);
+          handleOrderStatusChange(
+            order.payment_status || "",
+            orderData.status || "",
+          );
         } else if (!order && orderData.status) {
-          // First time loading order, don't trigger popups, but track the status
           lastShownStatusRef.current = orderData.status;
         } else if (order && order.status === orderData.status) {
-          // Status hasn't changed, ensure ref is set to prevent duplicate popups
-          // But if status is "arrived", don't set the ref so notification can trigger popup again
           if (
             lastShownStatusRef.current !== orderData.status &&
             orderData.status !== "arrived"
@@ -179,7 +183,6 @@ const OrderPlace: React.FC = () => {
 
         setOrder(orderData);
 
-        // Start proximity check if provider is assigned and order is accepted/on_the_way
         const hasProvider = orderData.provider && orderData.provider.id;
         const hasProviderLocation =
           orderData.provider?.lat && orderData.provider?.lng;
@@ -210,11 +213,8 @@ const OrderPlace: React.FC = () => {
     }
   };
 
-  // Check proximity between provider and customer
   const checkProximity = async (orderData: OrderType) => {
     try {
-      // Get customer location from order data
-      // Try different possible keys: lat/lng, user.lat/user.lng
       let customerLat: number | null = null;
       let customerLng: number | null = null;
 
@@ -226,8 +226,6 @@ const OrderPlace: React.FC = () => {
         customerLng = parseFloat(orderData.user.lng);
       }
 
-      // Get provider location from order data
-      // Try different possible keys: provider.lat/provider.lng
       let providerLat: number | null = null;
       let providerLng: number | null = null;
 
@@ -237,7 +235,6 @@ const OrderPlace: React.FC = () => {
       }
 
       if (!customerLat || !customerLng) return;
-
       if (!providerLat || !providerLng) return;
 
       if (
@@ -251,8 +248,6 @@ const OrderPlace: React.FC = () => {
           customerLng,
           providerLat,
           providerLng,
-          customerLatType: typeof customerLat,
-          providerLatType: typeof providerLat,
         });
         return;
       }
@@ -261,7 +256,7 @@ const OrderPlace: React.FC = () => {
         customerLat,
         customerLng,
         providerLat,
-        providerLng
+        providerLng,
       );
 
       if (distance <= 300 && !proximityPopupShownRef.current) {
@@ -274,21 +269,13 @@ const OrderPlace: React.FC = () => {
     }
   };
 
-  // Start proximity checking
   const startProximityCheck = (orderData: OrderType) => {
-    // Clear any existing interval
     stopProximityCheck();
-
-    // Reset popup shown flag
     proximityPopupShownRef.current = false;
-
-    // Initial check
     checkProximity(orderData);
 
-    // Check every 10 seconds - refresh order data first to get latest provider location
     proximityCheckIntervalRef.current = setInterval(async () => {
       if (orderId) {
-        // Refresh order details to get latest provider location
         try {
           const formData = new FormData();
           formData.append("type", "get_data");
@@ -299,27 +286,23 @@ const OrderPlace: React.FC = () => {
           if (response && response.data && response.data.length > 0) {
             const latestOrderData = response.data[0];
             setOrder(latestOrderData);
-
             checkProximity(latestOrderData);
           }
         } catch (error) {
           console.error(
             "❌ Error refreshing order data for proximity check:",
-            error
+            error,
           );
-          // Still check with current order data if refresh fails
           if (order) {
             checkProximity(order);
           }
         }
       } else if (order) {
-        // Fallback to current order data if no orderId
         checkProximity(order);
       }
     }, 10000);
   };
 
-  // Stop proximity checking
   const stopProximityCheck = () => {
     if (proximityCheckIntervalRef.current) {
       clearInterval(proximityCheckIntervalRef.current);
@@ -327,22 +310,19 @@ const OrderPlace: React.FC = () => {
     }
   };
 
-  // Handle order status changes
   const handleOrderStatusChange = (_oldStatus: string, newStatus: string) => {
     showStatusNotification(newStatus);
   };
 
-  // Show notification for status changes
   const showStatusNotification = (
     status: string,
     customMessage?: string,
-    forceShow: boolean = false
+    forceShow: boolean = false,
   ) => {
     let message = customMessage;
     let toastType = "info";
 
     if (!message) {
-      // Default messages based on status - use English keys for backend comparison
       switch (status.toLowerCase()) {
         case "accepted":
           message = t("order.orderAccepted");
@@ -355,9 +335,6 @@ const OrderPlace: React.FC = () => {
         case "arrived":
           message = t("order.providerArrived");
           toastType = "success";
-          // Show arrived popup instead of toast for arrived status
-          // If forceShow is true (from notification), always show the popup
-          // Otherwise, only show if we haven't already shown it for this status
           if (
             forceShow ||
             (lastShownStatusRef.current !== "arrived" &&
@@ -366,7 +343,7 @@ const OrderPlace: React.FC = () => {
             lastShownStatusRef.current = "arrived";
             setPopupType("arrived");
           }
-          return; // Don't show the toast for arrived status
+          return;
         case "started":
           message = t("order.serviceStarted");
           toastType = "info";
@@ -378,7 +355,6 @@ const OrderPlace: React.FC = () => {
         case "completed":
           message = t("order.serviceCompleted");
           toastType = "success";
-          // Only show if we haven't already shown it for this status
           if (
             lastShownStatusRef.current !== "completed" &&
             popupType !== "orderComplete"
@@ -386,14 +362,12 @@ const OrderPlace: React.FC = () => {
             lastShownStatusRef.current = "completed";
             setPopupType("orderComplete");
           }
-          return; // Don't show the toast for completed status
+          return;
         case "cancelled":
           message = t("order.orderCancelled");
           toastType = "warning";
           break;
         case "time_up":
-          // Show time-up popup
-          // Only show if we haven't already shown it for this status
           if (
             lastShownStatusRef.current !== "time_up" &&
             popupType !== "time-up"
@@ -401,49 +375,48 @@ const OrderPlace: React.FC = () => {
             lastShownStatusRef.current = "time_up";
             setPopupType("time-up");
           }
-          return; // Don't show the toast for time-up status
+          return;
         default:
           message = `${t("order.orderStatusUpdated")} ${status}`;
           toastType = "info";
       }
     }
 
-    // Show toast notification
     showToast(message, toastType as any);
   };
 
+  // ─── Pay Now: Tap payment lagao existing order ke liye ───
   const handlePay = async () => {
-    // const userId = await AsyncStorage.getItem("user_id");
-    // const latitude = await AsyncStorage.getItem("latitude");
-    // const longitude = await AsyncStorage.getItem("longitude");
+    if (isPayingNow || !orderId) return;
+    setIsPayingNow(true);
 
-    // if (orderId) {
-    //   setIsLoading(true);
+    try {
+      const parsedOrderId = orderId.startsWith('"')
+        ? JSON.parse(orderId)
+        : orderId;
 
-    //   const formData = new FormData();
-    //   formData.append("type", "add_data");
-    //   formData.append("table_name", "order_history");
-    //   formData.append("user_id", userId);
-    //   formData.append("lat", latitude || "");
-    //   formData.append("lng", longitude || "");
-    //   formData.append("order_id", orderId);
-    //   formData.append("status", "completed");
+      const paymentMethod = order?.payment_method || "";
+      const amount = parseFloat(order?.amount || "0");
 
-    //   try {
-    //     const response = await apiCall(formData);
-    //     if (response && response.result === true) {
-    // Show tip popup on successful completion
-    setPopupType("tipup");
-    //     } else {
-    //       showToast("Failed to complete order", "error");
-    //     }
-    //   } catch (error) {
-    //     console.error("Error completing order:", error);
-    //     showToast("An error occurred while completing the order", "error");
-    //   } finally {
-    //     setIsLoading(false);
-    //   }
-    // }
+      const useTap =
+        TAP_PAYMENT_ENABLED &&
+        paymentMethod !== "later" &&
+        (paymentMethod === "visa" || paymentMethod === "apple");
+
+      if (useTap) {
+        console.log("[Pay Now] Starting Tap payment for order:", parsedOrderId);
+        const response = await createTapCharge(amount, "SAR", parsedOrderId);
+        console.log("[Pay Now] Tap payment response:", response);
+      } else {
+        // Non-tap: seedha popup dikhao
+        setPopupType("tipup");
+      }
+    } catch (error) {
+      console.error("[Pay Now] Error:", error);
+      showToast(t("order.paymentFailed") || "Payment failed", "error");
+    } finally {
+      setIsPayingNow(false);
+    }
   };
 
   const handleCancel = async () => {
@@ -502,8 +475,8 @@ const OrderPlace: React.FC = () => {
       try {
         const response = await apiCall(formData);
         if (response && response.result === true) {
-          setPopupType(null); // Hide popup
-          router.replace("/(tabs)"); // Navigate to tabs screen
+          setPopupType(null);
+          router.replace("/(tabs)");
         } else {
           showToast(t("order.failedToComplete"), "error");
         }
@@ -513,6 +486,7 @@ const OrderPlace: React.FC = () => {
       }
     }
   };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -602,7 +576,17 @@ const OrderPlace: React.FC = () => {
 
       {activeTab === "Details" && (
         <View style={styles.footerButtons}>
-          {order?.status === "completed" ? null : order.status === "pending" ||
+          {order?.status === "completed" ? null : order.payment_status ===
+            "pending" ? (
+            <Button
+              title={isPayingNow ? `${t("paynow")}...` : t("paynow")}
+              variant="primary"
+              fullWidth={true}
+              width="100%"
+              onPress={handlePay}
+              disabled={isPayingNow}
+            />
+          ) : order.status === "pending" ||
             order.status === "on_the_way" ||
             order.status === "arrived" ? (
             <Button
@@ -611,14 +595,6 @@ const OrderPlace: React.FC = () => {
               fullWidth={true}
               width="100%"
               onPress={handleCancel}
-            />
-          ) : order.status === "started" ? (
-            <Button
-              title={t("paynow")}
-              variant="primary"
-              fullWidth={true}
-              width="100%"
-              onPress={handlePay}
             />
           ) : (
             <>
@@ -630,11 +606,12 @@ const OrderPlace: React.FC = () => {
                 onPress={handleCancel}
               />
               <Button
-                title={t("paynow")}
+                title={isPayingNow ? `${t("paynow")}...` : t("paynow")}
                 variant="primary"
                 fullWidth={false}
                 width="65%"
                 onPress={handlePay}
+                disabled={isPayingNow}
               />
             </>
           )}
@@ -667,15 +644,58 @@ const OrderPlace: React.FC = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { flex: 1, paddingHorizontal: s(16), paddingTop: vs(8) },
-  tabContainer: { flexDirection: "row", backgroundColor: Colors.primary300, borderRadius: ms(25), marginBottom: vs(10) },
-  activeTab: { padding: s(14), backgroundColor: Colors.secondary, borderRadius: ms(25), width: "50%", justifyContent: "center", alignItems: "center" },
-  activeTabText: { color: Colors.white, fontSize: ms(15), fontFamily: FONTS.semiBold },
-  inactiveTabText: { color: Colors.secondary300, fontSize: ms(15), fontFamily: FONTS.semiBold },
-  inactiveTab: { padding: s(14), borderRadius: ms(25), width: "50%", justifyContent: "center", alignItems: "center" },
-  footerButtons: { flexDirection: "row", justifyContent: "space-between", paddingVertical: vs(8), paddingHorizontal: s(16), gap: s(4) },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: Colors.primary300,
+    borderRadius: ms(25),
+    marginBottom: vs(10),
+  },
+  activeTab: {
+    padding: s(14),
+    backgroundColor: Colors.secondary,
+    borderRadius: ms(25),
+    width: "50%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  activeTabText: {
+    color: Colors.white,
+    fontSize: ms(15),
+    fontFamily: FONTS.semiBold,
+  },
+  inactiveTabText: {
+    color: Colors.secondary300,
+    fontSize: ms(15),
+    fontFamily: FONTS.semiBold,
+  },
+  inactiveTab: {
+    padding: s(14),
+    borderRadius: ms(25),
+    width: "50%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  footerButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: vs(8),
+    paddingHorizontal: s(16),
+    gap: s(4),
+  },
   overlay: { flex: 1, justifyContent: "flex-end" },
-  overlayBackground: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0, 0, 0, 0.5)" },
-  popupContainer: { backgroundColor: Colors.white, width: "100%", borderTopLeftRadius: ms(20), borderTopRightRadius: ms(20), minHeight: "50%", justifyContent: "center", alignItems: "center" },
+  overlayBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  popupContainer: {
+    backgroundColor: Colors.white,
+    width: "100%",
+    borderTopLeftRadius: ms(20),
+    borderTopRightRadius: ms(20),
+    minHeight: "50%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
 
