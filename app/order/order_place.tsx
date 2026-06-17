@@ -602,14 +602,34 @@ const OrderPlace: React.FC = () => {
       {activeTab === "Details" && (
         <View style={styles.footerButtons}>
           {order.payment_status === "pending" ? (
-            <Button
-              title={isPayingNow ? `${t("paynow")}...` : t("paynow")}
-              variant="primary"
-              fullWidth={true}
-              width="100%"
-              onPress={handlePay}
-              disabled={isPayingNow}
-            />
+            order.status === "accepted" || order.status === "arrived" ? (
+              <>
+                <Button
+                  title={t("cancel")}
+                  variant="secondary"
+                  fullWidth={false}
+                  width="32%"
+                  onPress={handleCancel}
+                />
+                <Button
+                  title={isPayingNow ? `${t("paynow")}...` : t("paynow")}
+                  variant="primary"
+                  fullWidth={false}
+                  width="65%"
+                  onPress={handlePay}
+                  disabled={isPayingNow}
+                />
+              </>
+            ) : (
+              <Button
+                title={isPayingNow ? `${t("paynow")}...` : t("paynow")}
+                variant="primary"
+                fullWidth={true}
+                width="100%"
+                onPress={handlePay}
+                disabled={isPayingNow}
+              />
+            )
           ) : order?.status === "completed" ? null : order.payment_status ===
             "paid" ? (
             order.status === "arrived" ? (
