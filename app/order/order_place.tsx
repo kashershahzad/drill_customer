@@ -612,13 +612,23 @@ const OrderPlace: React.FC = () => {
             />
           ) : order?.status === "completed" ? null : order.payment_status ===
             "paid" ? (
-            <Button
-              title={t("cancel")}
-              variant="secondary"
-              fullWidth={true}
-              width="100%"
-              onPress={handleCancel}
-            />
+            order.status === "arrived" ? (
+              <Button
+                title={t("order.completeOrder")}
+                variant="primary"
+                fullWidth={true}
+                width="100%"
+                onPress={handleCompleteOrder}
+              />
+            ) : (
+              <Button
+                title={t("cancel")}
+                variant="secondary"
+                fullWidth={true}
+                width="100%"
+                onPress={handleCancel}
+              />
+            )
           ) : order.status === "pending" ||
             order.status === "on_the_way" ||
             order.status === "arrived" ? (
