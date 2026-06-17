@@ -57,12 +57,14 @@ export default function ProviderCard({ order }: ProviderCardProps) {
     });
   };
   console.log(isOnTrackScreen);
+
+  const isTrackDisabled =
+    isOnTrackScreen ||
+    order?.status === "completed" ||
+    order?.status === "started";
+
   const handleTrack = () => {
-    if (
-      isOnTrackScreen ||
-      order?.status === "completed" ||
-      order?.status === "started"
-    ) {
+    if (isTrackDisabled) {
       console.log("Track button clicked, but navigation is disabled.");
       return;
     }
@@ -105,7 +107,7 @@ export default function ProviderCard({ order }: ProviderCardProps) {
           Icon={<Call width={s(16)} height={s(16)} />}
           size="compact"
           fullWidth={false}
-          style={styles.actionButton}
+          style={[styles.actionButton, styles.actionButtonWhite]}
           textSize={ms(14)}
           title={t("call")}
           variant="secondary"
@@ -125,7 +127,7 @@ export default function ProviderCard({ order }: ProviderCardProps) {
           Icon={<Track width={s(16)} height={s(16)} />}
           size="compact"
           fullWidth={false}
-          style={styles.actionButton}
+          style={[styles.actionButton, styles.actionButtonWhite]}
           textSize={ms(14)}
           title={t("track")}
           variant="secondary"
@@ -142,6 +144,7 @@ const styles = StyleSheet.create({
   providerInfo: { marginLeft: s(14) },
   buttonRow: { flexDirection: "row", gap: 6, marginTop: 8},
   actionButton: { flex: 1, height: 36, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 8 },
+  actionButtonWhite: { backgroundColor: Colors.white },
   providerName: { fontFamily: FONTS.bold, color: Colors.secondary, fontSize: ms(17), marginBottom: vs(4) },
   grayText: { color: Colors.secondary, fontSize: ms(13) },
   loadingContainer: { minHeight: vs(100), justifyContent: "center", alignItems: "center" },

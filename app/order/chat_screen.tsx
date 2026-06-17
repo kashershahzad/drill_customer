@@ -215,6 +215,7 @@ export default function ChatScreen() {
     formData.append("order_id", orderIdParam);
     formData.append("to_id", toId);
 
+    // console.log("[ChatScreen] formData", formData);
     try {
       const response = await apiCall(formData);
       // console.log("chat history", response);
@@ -230,26 +231,36 @@ export default function ChatScreen() {
         }
 
         const formattedMessages = response.chat.map((msg: any) => {
-          const isUser = msg.from_id === fromId;
-          // Check if message is from support agent (usually identified by user_type or role)
+          const isUser = String(msg.from_id) === String(fromId);
           const isSupportAgent =
+            msg.support === "1" ||
+            msg.support === 1 ||
             msg.user_type === "support_agent" ||
-            msg.role === "support_agent" ||
-            (msg.from_id !== fromId && msg.from_id !== response.provider?.id);
+            msg.role === "support_agent";
 
           let sender: "user" | "provider" | "support_agent" = "provider";
-          let senderInfo = response.provider;
+          let senderInfo: { name?: string; image?: string | null } | null =
+            response.provider ?? null;
 
           if (isUser) {
             sender = "user";
             senderInfo = response.user;
-          } else if (
-            isSupportAgent ||
-            msg.sender_name?.toLowerCase().includes("support")
-          ) {
+          } else if (isSupportAgent) {
             sender = "support_agent";
-            senderInfo = { name: "Support Agent", image: null };
+            senderInfo = {
+              name: msg.sender || "Support Agent",
+              image: null,
+            };
           }
+
+          const senderName =
+            msg.sender ||
+            senderInfo?.name ||
+            (isUser
+              ? "You"
+              : sender === "support_agent"
+                ? "Support Agent"
+                : "Provider");
 
           return {
             id: msg.id,
@@ -257,13 +268,7 @@ export default function ChatScreen() {
             sender: sender,
             timestamp: Number(msg.datetime),
             msgType: msg.msg_type === "file" ? "file" : "msg",
-            senderName:
-              senderInfo?.name ||
-              (isUser
-                ? "You"
-                : sender === "support_agent"
-                  ? "Support Agent"
-                  : "Provider"),
+            senderName,
             senderImage: senderInfo?.image || null,
           };
         });
@@ -547,39 +552,14 @@ export default function ChatScreen() {
                     }
                   >
                     {(message.sender === "provider" ||
-                      message.sender === "support_agent") && (
-                      <View style={styles.providerInfoContainer}>
-                        {showProfile && (
-                          <>
-                            {message.sender === "support_agent" ? (
-                              <View style={styles.supportAgentIcon}>
-                                <Text style={styles.supportAgentIconText}>
-                                  🎧
-                                </Text>
-                              </View>
-                            ) : (
-                              <Image
-                                source={
-                                  message.senderImage
-                                    ? {
-                                        uri: `${IMAGE_BASE_URL}${message.senderImage}`,
-                                      }
-                                    : require("@/assets/images/default-profile.png")
-                                }
-                                style={styles.profileImage}
-                                resizeMode="cover"
-                              />
-                            )}
-                            <Text style={styles.senderName}>
-                              {message.senderName}
-                            </Text>
-                          </>
-                        )}
-                        {!showProfile && (
-                          <View style={styles.profileImagePlaceholder} />
-                        )}
-                      </View>
-                    )}
+                      message.sender === "support_agent") &&
+                      showProfile && (
+                        <View style={styles.providerInfoContainer}>
+                          <Text style={styles.senderName}>
+                            {message.senderName}
+                          </Text>
+                        </View>
+                      )}
                     <TouchableOpacity
                       onLongPress={() => confirmDeleteMessage(message.id)}
                       style={
@@ -799,15 +779,10 @@ const styles = StyleSheet.create({
     fontFamily: FONTS.medium,
     color: Colors.secondary300,
   },
-  supportAgentIcon: {
-    width: s(34),
-    height: s(34),
-    borderRadius: ms(17),
-    backgroundColor: Colors.primary300,
-    justifyContent: "center",
-    alignItems: "center",
+  providerInfoContainer: {
+    marginBottom: vs(4),
+    width: "100%",
   },
-  supportAgentIconText: { fontSize: ms(18) },
   supportAgentMessage: {
     backgroundColor: Colors.gray100,
     padding: s(11),
@@ -815,20 +790,6 @@ const styles = StyleSheet.create({
     borderBottomStartRadius: 4,
     maxWidth: "100%",
   },
-  providerInfoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: vs(4),
-    gap: s(7),
-    width: "100%",
-  },
-  profileImage: {
-    width: s(34),
-    height: s(34),
-    borderRadius: ms(17),
-    backgroundColor: Colors.gray100,
-  },
-  profileImagePlaceholder: { width: s(34), height: s(34) },
   senderName: {
     fontSize: ms(12),
     fontFamily: FONTS.medium,
