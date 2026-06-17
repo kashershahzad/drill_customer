@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
+  AppState,
   Modal,
   StyleSheet,
   Text,
@@ -66,7 +67,35 @@ const OrderPlace: React.FC = () => {
   const [order, setOrder] = useState<OrderType | null>(null);
   const lastShownStatusRef = useRef<string | null>(null);
   const proximityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const orderPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const orderRef = useRef<OrderType | null>(null);
+  const orderIdRef = useRef<string | null>(null);
   const proximityPopupShownRef = useRef<boolean>(false);
+
+  const POLL_INTERVAL_MS = 5000;
+  const TERMINAL_ORDER_STATUSES = ["completed", "cancelled"];
+
+  const parseStoredOrderId = (id: string | null): string | null => {
+    if (!id) return null;
+    try {
+      return String(JSON.parse(id));
+    } catch {
+      return id.replace(/^"|"$/g, "");
+    }
+  };
+
+  const normalizeOrderId = (id: string | number | null | undefined): string => {
+    if (id == null) return "";
+    return parseStoredOrderId(String(id)) ?? String(id);
+  };
+
+  useEffect(() => {
+    orderRef.current = order;
+  }, [order]);
+
+  useEffect(() => {
+    orderIdRef.current = orderId;
+  }, [orderId]);
 
   useEffect(() => {
     if (popupType) {
@@ -76,141 +105,157 @@ const OrderPlace: React.FC = () => {
     }
   }, [popupType]);
 
-  useEffect(() => {
-    const initFCM = async () => {
-      try {
-        await requestFCMPermission();
-        await getFCMToken();
-      } catch (error) {
-        console.error("Error initializing FCM:", error);
-      }
-    };
-
-    const handleNotificationPress = async (data: NotificationData) => {
-      if (data?.order_id) {
-        if (orderId && data.order_id === orderId) {
-          if (data.status === "arrived") {
-            lastShownStatusRef.current = null;
-          }
-
-          // Refresh order details
-          getOrderDetails(data.order_id);
-
-          // Display toast for status change
-          // If status is "arrived", force show the popup (even if shown before)
-          if (data.status) {
-            const forceShow = data.status === "arrived";
-            showStatusNotification(data.status, data.message, forceShow);
-          }
-        }
-      }
-    };
-
-    initFCM();
-    const unsubscribe = setupNotificationListeners(handleNotificationPress);
-    return () => {
-      unsubscribe(); // Clean up listeners
-      stopProximityCheck(); // Clean up proximity check
-    };
-  }, [orderId]);
-
   useFocusEffect(
     useCallback(() => {
+      let isActive = true;
+
       const init = async () => {
         try {
-          const keys = await AsyncStorage.getAllKeys();
-
-          // Get all key-value pairs
-          const result = await AsyncStorage.multiGet(keys);
-
-          // Convert to object format
           const storedOrderId = await AsyncStorage.getItem("order_id");
           const userId = await AsyncStorage.getItem("user_id");
+          const parsedOrderId = parseStoredOrderId(storedOrderId);
+
+          if (!isActive) return;
+
           setOrderId(storedOrderId);
           setUserId(userId);
 
-          if (storedOrderId) {
-            const parsedOrderId = storedOrderId.startsWith('"')
-              ? JSON.parse(storedOrderId)
-              : storedOrderId;
-            getOrderDetails(parsedOrderId);
+          if (parsedOrderId) {
+            await fetchOrderDetails(parsedOrderId, true);
+            startOrderPolling(parsedOrderId);
           }
         } catch (error) {
           console.error("Initialization error:", error);
           showToast(t("order.failedToInitialize"), "error");
         }
       };
+
       init();
 
-      // Cleanup on unmount
       return () => {
+        isActive = false;
         stopProximityCheck();
+        stopOrderPolling();
       };
     }, []),
   );
 
-  const getOrderDetails = async (id: string) => {
-    setIsLoading(true);
+  const applyOrderUpdate = (orderData: OrderType) => {
+    const previousOrder = orderRef.current;
+
+    if (previousOrder && previousOrder.status !== orderData.status) {
+      handleOrderStatusChange(
+        previousOrder.status || "",
+        orderData.status || "",
+      );
+    } else if (!previousOrder && orderData.status) {
+      lastShownStatusRef.current = orderData.status ?? null;
+    } else if (previousOrder && previousOrder.status === orderData.status) {
+      if (
+        lastShownStatusRef.current !== orderData.status &&
+        orderData.status !== "arrived"
+      ) {
+        lastShownStatusRef.current = orderData.status ?? null;
+      }
+    }
+
+    setOrder(orderData);
+    orderRef.current = orderData;
+
+    const hasProvider = orderData.provider && orderData.provider.id;
+    const hasProviderLocation =
+      orderData.provider?.lat && orderData.provider?.lng;
+    const hasCustomerLocation = orderData.lat && orderData.lng;
+    const isActiveStatus =
+      orderData.status === "accepted" || orderData.status === "on_the_way";
+
+    if (
+      hasProvider &&
+      hasProviderLocation &&
+      hasCustomerLocation &&
+      isActiveStatus
+    ) {
+      startProximityCheck(orderData);
+    } else {
+      stopProximityCheck();
+    }
+
+    if (
+      orderData.status &&
+      TERMINAL_ORDER_STATUSES.includes(orderData.status)
+    ) {
+      stopOrderPolling();
+    }
+  };
+
+  const fetchOrderDetails = async (id: string, showLoading = false) => {
+    const parsedId = parseStoredOrderId(id) ?? id;
+
+    if (showLoading) {
+      setIsLoading(true);
+    }
 
     const formData = new FormData();
     formData.append("type", "get_data");
     formData.append("table_name", "orders");
-    formData.append("id", id);
+    formData.append("id", parsedId);
 
     try {
       const response = await apiCall(formData);
-      console.log("order details", response);
-      console.log("order details formData", formData);
 
       if (response && response.data && response.data.length > 0) {
-        const orderData = response.data[0];
+        applyOrderUpdate(response.data[0]);
+        return response.data[0];
+      }
 
-        if (order && order.status !== orderData.status) {
-          handleOrderStatusChange(
-            order.payment_status || "",
-            orderData.status || "",
-          );
-        } else if (!order && orderData.status) {
-          lastShownStatusRef.current = orderData.status;
-        } else if (order && order.status === orderData.status) {
-          if (
-            lastShownStatusRef.current !== orderData.status &&
-            orderData.status !== "arrived"
-          ) {
-            lastShownStatusRef.current = orderData.status;
-          }
-        }
-
-        setOrder(orderData);
-
-        const hasProvider = orderData.provider && orderData.provider.id;
-        const hasProviderLocation =
-          orderData.provider?.lat && orderData.provider?.lng;
-        const hasCustomerLocation = orderData.lat && orderData.lng;
-        const isActiveStatus =
-          orderData.status === "accepted" || orderData.status === "on_the_way";
-
-        if (
-          hasProvider &&
-          hasProviderLocation &&
-          hasCustomerLocation &&
-          isActiveStatus
-        ) {
-          startProximityCheck(orderData);
-        } else {
-          stopProximityCheck();
-        }
-      } else {
+      if (showLoading) {
         showToast(t("order.noOrderDetailsFound"), "error");
         setOrder(null);
       }
+      return null;
     } catch (error) {
       console.error("Failed to fetch order details", error);
-      showToast(t("order.failedToFetchDetails"), "error");
-      setOrder(null);
+      if (showLoading) {
+        showToast(t("order.failedToFetchDetails"), "error");
+        setOrder(null);
+      }
+      return null;
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
+  };
+
+  const getOrderDetails = async (id: string) => {
+    const orderData = await fetchOrderDetails(id, true);
+    if (
+      orderData?.status &&
+      !TERMINAL_ORDER_STATUSES.includes(orderData.status)
+    ) {
+      startOrderPolling(id);
+    }
+  };
+
+  const refreshOrderDetails = async (id: string) => {
+    await fetchOrderDetails(id, false);
+  };
+
+  const stopOrderPolling = () => {
+    if (orderPollIntervalRef.current) {
+      clearInterval(orderPollIntervalRef.current);
+      orderPollIntervalRef.current = null;
+    }
+  };
+
+  const startOrderPolling = (id: string) => {
+    stopOrderPolling();
+
+    const parsedId = parseStoredOrderId(id) ?? id;
+
+    orderPollIntervalRef.current = setInterval(() => {
+      refreshOrderDetails(parsedId);
+    }, POLL_INTERVAL_MS);
   };
 
   const checkProximity = async (orderData: OrderType) => {
@@ -274,35 +319,11 @@ const OrderPlace: React.FC = () => {
     proximityPopupShownRef.current = false;
     checkProximity(orderData);
 
-    proximityCheckIntervalRef.current = setInterval(async () => {
-      if (orderId) {
-        try {
-          const formData = new FormData();
-          formData.append("type", "get_data");
-          formData.append("table_name", "orders");
-          formData.append("id", orderId);
-          const response = await apiCall(formData);
-          // console.log("order data formData", formData);
-          // console.log("order data", response);
-
-          if (response && response.data && response.data.length > 0) {
-            const latestOrderData = response.data[0];
-            setOrder(latestOrderData);
-            checkProximity(latestOrderData);
-          }
-        } catch (error) {
-          console.error(
-            "❌ Error refreshing order data for proximity check:",
-            error,
-          );
-          if (order) {
-            checkProximity(order);
-          }
-        }
-      } else if (order) {
-        checkProximity(order);
+    proximityCheckIntervalRef.current = setInterval(() => {
+      if (orderRef.current) {
+        checkProximity(orderRef.current);
       }
-    }, 10000);
+    }, POLL_INTERVAL_MS);
   };
 
   const stopProximityCheck = () => {
@@ -386,6 +407,63 @@ const OrderPlace: React.FC = () => {
 
     showToast(message, toastType as any);
   };
+
+  useEffect(() => {
+    const initFCM = async () => {
+      try {
+        await requestFCMPermission();
+        await getFCMToken();
+      } catch (error) {
+        console.error("Error initializing FCM:", error);
+      }
+    };
+
+    const handleNotificationPress = async (data: NotificationData) => {
+      if (!data?.order_id) return;
+
+      const incomingOrderId = normalizeOrderId(data.order_id);
+      const currentOrderId = normalizeOrderId(orderIdRef.current);
+
+      if (currentOrderId && incomingOrderId !== currentOrderId) return;
+
+      if (data.status === "arrived") {
+        lastShownStatusRef.current = null;
+      }
+
+      await refreshOrderDetails(incomingOrderId);
+
+      if (data.status) {
+        const forceShow = data.status === "arrived";
+        showStatusNotification(data.status, data.message, forceShow);
+      }
+    };
+
+    initFCM();
+    const unsubscribe = setupNotificationListeners(handleNotificationPress);
+    return () => {
+      unsubscribe();
+    };
+  }, [showToast, t]);
+
+  useEffect(() => {
+    const handleAppStateChange = (nextState: string) => {
+      if (nextState !== "active") return;
+
+      const currentOrderId = parseStoredOrderId(orderIdRef.current);
+      if (currentOrderId) {
+        refreshOrderDetails(currentOrderId);
+      }
+    };
+
+    const subscription = AppState.addEventListener(
+      "change",
+      handleAppStateChange,
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const processTapPayment = useCallback(
     async (tipAmountStr: string) => {
