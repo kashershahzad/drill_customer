@@ -602,7 +602,9 @@ const OrderPlace: React.FC = () => {
       {activeTab === "Details" && (
         <View style={styles.footerButtons}>
           {order.payment_status === "pending" ? (
-            order.status === "accepted" || order.status === "arrived" ? (
+            order.status === "pending" ||
+            order.status === "accepted" ||
+            order.status === "arrived" ? (
               <>
                 <Button
                   title={t("cancel")}
@@ -632,7 +634,7 @@ const OrderPlace: React.FC = () => {
             )
           ) : order?.status === "completed" ? null : order.payment_status ===
             "paid" ? (
-            order.status === "arrived" ? (
+            order.status === "accepted" || order.status === "arrived" ? (
               <Button
                 title={t("order.completeOrder")}
                 variant="primary"
