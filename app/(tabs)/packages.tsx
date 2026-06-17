@@ -14,8 +14,8 @@ import DashedSeparator from "~/components/dashed_seprator";
 import Header from "~/components/header";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 
 interface Package {
   id: string;
@@ -47,6 +47,7 @@ export default function Packages() {
 
       const response = await apiCall(formData);
 
+      console.log("package response", response);
       if (response && response.data) {
         const transformedPlans = response.data.map((plan: any) => ({
           id: plan.id,
@@ -147,14 +148,44 @@ export default function Packages() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.white },
-  container: { flex: 1, paddingHorizontal: s(16), paddingTop: vs(8), backgroundColor: Colors.white },
+  container: {
+    flex: 1,
+    paddingHorizontal: s(16),
+    paddingTop: vs(8),
+    backgroundColor: Colors.white,
+  },
   loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  errorContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: s(16) },
-  errorText: { fontSize: ms(15), color: "red", marginBottom: vs(14), textAlign: "center", fontFamily: FONTS.bold },
-  retryButton: { backgroundColor: Colors.primary, paddingVertical: vs(8), paddingHorizontal: s(16), borderRadius: ms(8) },
-  retryButtonText: { color: Colors.white, fontFamily: FONTS.bold, fontSize: ms(14) },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: s(16),
+  },
+  errorText: {
+    fontSize: ms(15),
+    color: "red",
+    marginBottom: vs(14),
+    textAlign: "center",
+    fontFamily: FONTS.bold,
+  },
+  retryButton: {
+    backgroundColor: Colors.primary,
+    paddingVertical: vs(8),
+    paddingHorizontal: s(16),
+    borderRadius: ms(8),
+  },
+  retryButtonText: {
+    color: Colors.white,
+    fontFamily: FONTS.bold,
+    fontSize: ms(14),
+  },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  emptyText: { fontSize: ms(15), color: Colors.secondary, textAlign: "center", fontFamily: FONTS.bold },
+  emptyText: {
+    fontSize: ms(15),
+    color: Colors.secondary,
+    textAlign: "center",
+    fontFamily: FONTS.bold,
+  },
   packageCard: {
     backgroundColor: Colors.primary300,
     padding: s(16),
@@ -167,12 +198,53 @@ const styles = StyleSheet.create({
     shadowRadius: 1.41,
   },
   selectedPackageCard: { borderWidth: 2, borderColor: Colors.primary },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  packageName: { fontSize: ms(17), fontFamily: FONTS.bold, color: Colors.secondary, marginBottom: vs(4) },
-  packageDetails: { fontSize: ms(13), color: Colors.secondary, fontFamily: FONTS.medium },
-  radioOuter: { width: s(24), height: s(24), borderRadius: ms(12), borderWidth: 2, borderColor: Colors.primary, alignItems: "center", justifyContent: "center" },
-  radioInner: { width: s(14), height: s(14), borderRadius: ms(7), backgroundColor: Colors.primary },
-  featureItem: { flexDirection: "row", alignItems: "flex-start", marginTop: vs(8) },
-  bulletPoint: { fontSize: ms(15), color: Colors.primary, marginRight: s(8), fontFamily: FONTS.regular },
-  featureText: { fontSize: ms(13), color: Colors.secondary, flex: 1, lineHeight: ms(20), fontFamily: FONTS.regular },
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  packageName: {
+    fontSize: ms(17),
+    fontFamily: FONTS.bold,
+    color: Colors.secondary,
+    marginBottom: vs(4),
+  },
+  packageDetails: {
+    fontSize: ms(13),
+    color: Colors.secondary,
+    fontFamily: FONTS.medium,
+  },
+  radioOuter: {
+    width: s(24),
+    height: s(24),
+    borderRadius: ms(12),
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioInner: {
+    width: s(14),
+    height: s(14),
+    borderRadius: ms(7),
+    backgroundColor: Colors.primary,
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: vs(8),
+  },
+  bulletPoint: {
+    fontSize: ms(15),
+    color: Colors.primary,
+    marginRight: s(8),
+    fontFamily: FONTS.regular,
+  },
+  featureText: {
+    fontSize: ms(13),
+    color: Colors.secondary,
+    flex: 1,
+    lineHeight: ms(20),
+    fontFamily: FONTS.regular,
+  },
 });

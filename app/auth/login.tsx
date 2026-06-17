@@ -30,7 +30,7 @@ import { ms, s, vs } from "~/utils/responsive";
 type CountryCode = { key: number; label: string; value: string };
 
 const countryCodes: CountryCode[] = [
-  { key: 1, label: "Kingdom Saudi Arabia (+966)", value: "+966" },
+  { key: 1, label: "", value: "+966" },
 ];
 
 const PENDING_BOOKING_KEY = "pending_booking";
@@ -46,7 +46,7 @@ export default function Login() {
   const handleContinue = async () => {
     const cleanedNumber = phoneNumber.replace(/\D/g, "");
     if (cleanedNumber.length < 9 || cleanedNumber.length > 10) {
-      setError("Please enter a valid phone number.");
+      setError(t("login.invalidPhone"));
       return;
     }
     setError("");
@@ -74,10 +74,10 @@ export default function Login() {
         console.log("📲 Login: update_noti request completed");
         router.push("/auth/verify");
       } else {
-        setError(response.message || "Login failed.");
+        setError(response.message || t("login.loginFailed"));
       }
     } catch (e) {
-      setError(t("login.invalidPhone"));
+      setError(t("verify.errorFallback"));
     }
   };
 
@@ -97,7 +97,9 @@ export default function Login() {
           style={styles.countrySelector}
         >
           <Flag width={INPUT_ICON_SIZE} height={INPUT_ICON_SIZE} />
-          <Text style={styles.countryText}>{countryCode.label}</Text>
+          <Text style={styles.countryText}>
+            {countryCode.label || t("login.countrySaudi")}
+          </Text>
           <Ionicons name="chevron-down" size={INPUT_ICON_SIZE} />
         </TouchableOpacity>
 

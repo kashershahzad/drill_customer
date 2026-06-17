@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
+import { formatAppDate, formatAppTime } from "~/utils/locale";
 
 const { width } = Dimensions.get("window");
 
@@ -31,7 +32,7 @@ const Wallet = () => {
       amount: 100,
       card: "***7999",
       positive: false,
-      time: "May 10, 10:40 PM",
+      time: `${formatAppDate(new Date(2024, 4, 10), { month: "short", day: "numeric" })}, ${formatAppTime(new Date(2024, 4, 10, 22, 40), { hour: "numeric", minute: "2-digit", hour12: true })}`,
     },
     {
       id: 2,
@@ -39,7 +40,7 @@ const Wallet = () => {
       amount: 500,
       positive: true,
       card: "***7999",
-      time: "May 11, 02:30 PM",
+      time: `${formatAppDate(new Date(2024, 4, 11), { month: "short", day: "numeric" })}, ${formatAppTime(new Date(2024, 4, 11, 14, 30), { hour: "numeric", minute: "2-digit", hour12: true })}`,
     },
     {
       id: 3,
@@ -47,7 +48,7 @@ const Wallet = () => {
       amount: 500,
       positive: true,
       card: "***7999",
-      time: "May 11, 02:30 PM",
+      time: `${formatAppDate(new Date(2024, 4, 11), { month: "short", day: "numeric" })}, ${formatAppTime(new Date(2024, 4, 11, 14, 30), { hour: "numeric", minute: "2-digit", hour12: true })}`,
     },
     {
       id: 4,
@@ -55,15 +56,15 @@ const Wallet = () => {
       amount: 500,
       positive: true,
       card: "***7999",
-      time: "May 11, 02:30 PM",
+      time: `${formatAppDate(new Date(2024, 4, 11), { month: "short", day: "numeric" })}, ${formatAppTime(new Date(2024, 4, 11, 14, 30), { hour: "numeric", minute: "2-digit", hour12: true })}`,
     },
   ];
 
   const chartData = [
-    { value: 20, label: "01 Jan" },
-    { value: 5, label: "10 Jan" },
-    { value: 59, label: "20 Jan" },
-    { value: 10, label: "30 Jan" },
+    { value: 20, label: formatAppDate(new Date(2024, 0, 1), { day: "2-digit", month: "short" }) },
+    { value: 5, label: formatAppDate(new Date(2024, 0, 10), { day: "2-digit", month: "short" }) },
+    { value: 59, label: formatAppDate(new Date(2024, 0, 20), { day: "2-digit", month: "short" }) },
+    { value: 10, label: formatAppDate(new Date(2024, 0, 30), { day: "2-digit", month: "short" }) },
   ];
 
   const handleAdd = () => {

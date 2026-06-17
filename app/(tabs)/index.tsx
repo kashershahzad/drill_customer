@@ -42,6 +42,7 @@ export default function Home() {
   );
 
   const headerTitle = isLoggedIn && userName ? userName : t("defaultGreeting");
+  const [searchQuery, setSearchQuery] = useState("");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -49,11 +50,12 @@ export default function Home() {
         style={styles.scrollView}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Header userName={headerTitle} homeScreen icon />
         <Banner />
-        <Search />
-        <Categories />
+        <Search value={searchQuery} onChangeText={setSearchQuery} />
+        <Categories searchQuery={searchQuery} />
         <PopularServices />
       </ScrollView>
     </SafeAreaView>

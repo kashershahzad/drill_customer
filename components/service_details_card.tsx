@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
+import { formatAppDate, formatAppTime } from "~/utils/locale";
 import { Colors } from "../constants/Colors";
 import DashedSeprator from "./dashed_seprator";
 
@@ -30,25 +31,23 @@ export default function ServiceDetailsCard({
 
       const scheduleDate = new Date(year, month - 1, day, hours, minutes);
 
-      const formattedDate = scheduleDate.toLocaleDateString("en-US", {
+      const formattedDate = formatAppDate(scheduleDate, {
         weekday: "long",
         year: "numeric",
         month: "long",
         day: "numeric",
       });
 
-      const formattedTime = scheduleDate.toLocaleTimeString("en-US", {
+      const formattedTime = formatAppTime(scheduleDate, {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
       });
 
-
-
-      return `${formattedDate} at ${formattedTime}`;
+      return t("dateAtTime", { date: formattedDate, time: formattedTime });
     } catch (error) {
       console.error("Error formatting schedule date/time:", error);
-      return "Invalid date/time";
+      return t("invalidDateTime");
     }
   };
 
@@ -156,9 +155,9 @@ export default function ServiceDetailsCard({
             </View>
             <DashedSeprator />
             <View style={styles.detailsRow}>
-              <Text style={styles.label}>{t("date")} & Time</Text>
+              <Text style={styles.label}>{t("dateAndTime")}</Text>
               <Text style={styles.value}>
-                {order.date || order.timestamp || "N/A"}
+                {order.date || order.timestamp || t("notAvailable")}
               </Text>
             </View>
             <DashedSeprator />

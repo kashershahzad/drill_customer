@@ -1,5 +1,6 @@
 import Star from "@/assets/svgs/Star.svg";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
@@ -18,6 +19,8 @@ type ServiceCardProps = {
 };
 
 const ServiceCard: React.FC<ServiceCardProps> = ({ item }) => {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.card}>
       <Image
@@ -39,7 +42,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ item }) => {
           <Image source={item.providerImage} style={styles.providerImage} />
           <View>
             <Text style={styles.providerName} numberOfLines={1}>{item.provider}</Text>
-            <Text style={styles.providerLabel}>Provider</Text>
+            <Text style={styles.providerLabel}>{t("provider")}</Text>
           </View>
         </View>
       </View>

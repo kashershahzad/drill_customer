@@ -26,14 +26,14 @@ const Language: React.FC = () => {
   const languages: Language[] = [
     {
       code: "en",
-      name: "English",
-      nativeName: "English",
+      name: t("language.en"),
+      nativeName: t("language.nativeEn"),
       flag: "🇺🇸",
     },
     {
       code: "ar",
-      name: "Arabic",
-      nativeName: "العربية",
+      name: t("language.ar"),
+      nativeName: t("language.nativeAr"),
       flag: "🇸🇦",
     },
   ];
@@ -51,11 +51,7 @@ const Language: React.FC = () => {
       }
     } catch (error) {
       console.error("Failed to change language:", error);
-      Alert.alert(
-        t("error") || "Error",
-        t("language.changeError") ||
-          "Failed to change language. Please try again."
-      );
+      Alert.alert(t("error"), t("language.changeError"));
     }
   };
 
@@ -69,11 +65,13 @@ const Language: React.FC = () => {
       onPress={onPress}
       activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel={`Select ${language.name} language`}
+      accessibilityLabel={t("language.selectLanguageOption", {
+        language: language.name,
+      })}
       accessibilityState={{ selected: isSelected }}
     >
       <View style={styles.languageContent}>
-        <Text style={styles.flag} accessibilityLabel={`${language.name} flag`}>
+        <Text style={styles.flag} accessibilityLabel={t("language.languageFlag", { language: language.name })}>
           {language.flag}
         </Text>
         <View style={styles.languageText}>
@@ -89,7 +87,7 @@ const Language: React.FC = () => {
       </View>
       {isSelected && (
         <View style={styles.checkmark}>
-          <Text style={styles.checkmarkIcon} accessibilityLabel="Selected">
+          <Text style={styles.checkmarkIcon} accessibilityLabel={t("language.selected")}>
             ✓
           </Text>
         </View>
@@ -99,10 +97,10 @@ const Language: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Header title={t("language.language") || "Language"} backBtn />
+      <Header title={t("language.language")} backBtn />
       <View style={styles.content}>
         <Text style={styles.subtitle}>
-          {t("language.selectLanguage") || "Select your preferred language"}
+          {t("language.selectLanguage")}
         </Text>
         <View style={styles.languageList}>
           {languages.map((language: Language) => (
@@ -115,8 +113,7 @@ const Language: React.FC = () => {
           ))}
         </View>
         <Text style={styles.note}>
-          {t("language.languageNote") ||
-            "The app will restart to apply language changes"}
+          {t("language.languageNote")}
         </Text>
       </View>
     </SafeAreaView>

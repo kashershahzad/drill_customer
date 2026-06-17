@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
+import { formatAppDate } from "~/utils/locale";
 
 type Category = {
   image: any;
@@ -24,7 +25,7 @@ export default function SelectedService({
   scheduleTime,
 }: Props) {
   const { t } = useTranslation();
-  const currentDate = new Date().toLocaleDateString("en-GB", {
+  const currentDate = formatAppDate(new Date(), {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -49,7 +50,7 @@ export default function SelectedService({
                     .split("-")
                     .map(Number);
                   const localDate = new Date(year, month - 1, day);
-                  return localDate.toLocaleDateString("en-US", {
+                  return formatAppDate(localDate, {
                     weekday: "long",
                     year: "numeric",
                     month: "long",

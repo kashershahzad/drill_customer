@@ -93,10 +93,10 @@ export default function EditProfile() {
           image: profileData.image || "",
         });
       } else {
-        throw new Error(response.message || "Failed to load profile.");
+        throw new Error(response.message || t("account.failedToLoadProfile"));
       }
     } catch (err: any) {
-      setError(err.message || "Something went wrong.");
+      setError(err.message || t("alerts.somethingWentWrong"));
     } finally {
       setLoading(false);
     }
@@ -264,8 +264,8 @@ export default function EditProfile() {
                   </View>
                 </View>
               </TouchableOpacity>
-              <Text style={styles.userName}>{user.name || "N/A"}</Text>
-              <Text style={styles.userEmail}>{user.email || "N/A"}</Text>
+              <Text style={styles.userName}>{user.name || t("notAvailable")}</Text>
+              <Text style={styles.userEmail}>{user.email || t("notAvailable")}</Text>
             </View>
 
             <Seprator />

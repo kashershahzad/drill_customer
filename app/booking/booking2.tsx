@@ -115,7 +115,7 @@ export default function Booking2Screen() {
     if (!finalLat || !finalLng) {
       Alert.alert(
         t("error"),
-        "Location is required. Please go back and select a location.",
+        t("booking.locationRequiredGoBack"),
       );
       return;
     }

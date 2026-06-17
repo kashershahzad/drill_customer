@@ -22,7 +22,11 @@ type Category = {
   name: string;
 };
 
-export default function Categories() {
+type CategoriesProps = {
+  searchQuery?: string;
+};
+
+export default function Categories({ searchQuery = "" }: CategoriesProps) {
   const { t } = useTranslation();
   const { isLoggedIn, setPendingBooking } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -50,10 +54,10 @@ export default function Categories() {
 
           setCategories(mappedCategories);
         } else {
-          setError(response.message || "Failed to load categories.");
+          setError(response.message || t("add.failedToLoadCategories"));
         }
       } catch (err) {
-        setError("Something went wrong. Please try again.");
+        setError(t("add.somethingWentWrong"));
       } finally {
         setLoading(false);
       }
@@ -62,7 +66,19 @@ export default function Categories() {
     getCategories();
   }, []);
 
-  const visibleData = expanded ? categories : categories.slice(0, 6);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredCategories =
+    normalizedQuery.length > 0
+      ? categories.filter((category) =>
+          category.name.toLowerCase().includes(normalizedQuery)
+        )
+      : categories;
+  const isSearching = normalizedQuery.length > 0;
+  const visibleData = isSearching
+    ? filteredCategories
+    : expanded
+      ? categories
+      : categories.slice(0, 6);
 
   const handleBooking = async (category: Category) => {
     if (!isLoggedIn) {
@@ -90,7 +106,7 @@ export default function Categories() {
       {/* Header Section */}
       <View style={styles.header}>
         <Text style={styles.title}>{t("categories")}</Text>
-        {categories.length > 6 && (
+        {!isSearching && categories.length > 6 && (
           <TouchableOpacity onPress={() => setExpanded(!expanded)}>
             <Text style={styles.seeAllText}>
               {expanded ? t("showless") : t("seeall")}
@@ -104,6 +120,8 @@ export default function Categories() {
         <ActivityIndicator size="large" color={Colors.primary} />
       ) : error ? (
         <Text style={styles.errorText}>{error}</Text>
+      ) : visibleData.length === 0 ? (
+        <Text style={styles.emptyText}>{t("search.noCategoriesFound")}</Text>
       ) : (
         <FlatList
           scrollEnabled={false}
@@ -150,5 +168,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: vs(10),
     fontFamily: FONTS.bold,
+  },
+  emptyText: {
+    color: Colors.secondary300,
+    textAlign: "center",
+    marginTop: vs(10),
+    fontFamily: FONTS.medium,
+    fontSize: ms(14),
   },
 });

@@ -2,6 +2,7 @@ import Tick from "@/assets/svgs/tick.svg";
 import DashedSeparator from "@/components/dashed_seprator";
 import { Colors } from "@/constants/Colors";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, View } from "react-native";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
@@ -10,6 +11,8 @@ interface StepperProps {
 }
 
 const Stepper: React.FC<StepperProps> = ({ step }) => {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.container}>
       <View style={styles.stepContainer}>
@@ -18,7 +21,7 @@ const Stepper: React.FC<StepperProps> = ({ step }) => {
           <View style={styles.stepIconContainer}>
             <Tick />
           </View>
-          <Text style={styles.stepText}>Step 1</Text>
+          <Text style={styles.stepText}>{t("step1")}</Text>
         </View>
 
         {/* Separator */}
@@ -42,7 +45,7 @@ const Stepper: React.FC<StepperProps> = ({ step }) => {
               </View>
             )}
           </View>
-          <Text style={styles.stepText}>Step 2</Text>
+          <Text style={styles.stepText}>{t("step2")}</Text>
         </View>
       </View>
     </View>

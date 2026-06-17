@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
+import { formatAppDate, formatAppTime } from "~/utils/locale";
 
 export default function ServiceTypeScreen() {
   const { t } = useTranslation();
@@ -32,7 +33,7 @@ export default function ServiceTypeScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
+    return formatAppDate(date, {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -41,7 +42,7 @@ export default function ServiceTypeScreen() {
   };
 
   const formatTime = (time: Date) => {
-    return time.toLocaleTimeString("en-US", {
+    return formatAppTime(time, {
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,

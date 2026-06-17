@@ -119,7 +119,7 @@ export default function LocationScreen() {
         setSelectedLocation({
           latitude,
           longitude,
-          address: (params?.location as string) || "Fetching address...",
+          address: (params?.location as string) || t("booking.fetchingAddress"),
         });
 
         if (!params?.location) {
@@ -150,7 +150,7 @@ export default function LocationScreen() {
             setSelectedLocation({
               latitude,
               longitude,
-              address: "Fetching address...",
+              address: t("booking.fetchingAddress"),
             });
             
             fetchAddressFromCoords(latitude, longitude);
@@ -175,7 +175,7 @@ export default function LocationScreen() {
       setSelectedLocation({
         latitude,
         longitude,
-        address: "Fetching address...",
+        address: t("booking.fetchingAddress"),
       });
 
       fetchAddressFromCoords(latitude, longitude);
@@ -193,7 +193,7 @@ export default function LocationScreen() {
     setSelectedLocation({
       latitude: region.latitude,
       longitude: region.longitude,
-      address: "Fetching address...",
+      address: t("booking.fetchingAddress"),
     });
     fetchAddressFromCoords(region.latitude, region.longitude);
   };

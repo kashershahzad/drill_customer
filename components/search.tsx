@@ -1,19 +1,19 @@
-import CurrentLocation from "@/assets/svgs/GPS.svg";
 import LocationIcon from "@/assets/svgs/locationIcon.svg";
 import SearchIcon from "@/assets/svgs/searchIcon.svg";
-import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { inputFieldStyles, INPUT_ICON_SIZE, INPUT_PLACEHOLDER_FONT_SIZE } from "~/components/inputfield";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
 
-export default function Search() {
-  const { t } = useTranslation();
+type SearchProps = {
+  value: string;
+  onChangeText: (text: string) => void;
+};
 
-  const handleSearch = () => router.push("/(tabs)/add");
-  const handleLocation = () => router.push("/(tabs)/add");
+export default function Search({ value, onChangeText }: SearchProps) {
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
@@ -23,27 +23,29 @@ export default function Search() {
           placeholder={t("search.allServicesAvailable")}
           placeholderTextColor={Colors.secondary300}
           style={styles.input}
-          editable={false}
-          onTouchEnd={handleSearch}
+          value={value}
+          onChangeText={onChangeText}
+          returnKeyType="search"
           accessibilityLabel={t("search.allServicesAvailable")}
         />
-        <TouchableOpacity
-          onPress={handleLocation}
-          style={styles.locationButton}
-          accessibilityRole="button"
-          accessibilityLabel={t("search.browseServices")}
-        >
-          <CurrentLocation width={INPUT_ICON_SIZE} height={INPUT_ICON_SIZE} />
-        </TouchableOpacity>
+        {value.length > 0 && (
+          <TouchableOpacity
+            onPress={() => onChangeText("")}
+            style={styles.clearButton}
+            accessibilityRole="button"
+            accessibilityLabel={t("search.clearSearch")}
+          >
+            <Text style={styles.clearText}>×</Text>
+          </TouchableOpacity>
+        )}
       </View>
-      <TouchableOpacity
+      <View
         style={styles.searchButton}
-        onPress={handleSearch}
-        accessibilityRole="button"
+        accessibilityRole="image"
         accessibilityLabel={t("search.searchServices")}
       >
         <SearchIcon width={s(24)} height={s(24)} />
-      </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -66,9 +68,16 @@ const styles = StyleSheet.create({
     color: Colors.secondary100,
     fontFamily: FONTS.medium,
   },
-  locationButton: {
+  clearButton: {
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: s(4),
+  },
+  clearText: {
+    fontSize: ms(22),
+    lineHeight: ms(22),
+    color: Colors.secondary300,
+    fontFamily: FONTS.medium,
   },
   searchButton: {
     minWidth: vs(44),

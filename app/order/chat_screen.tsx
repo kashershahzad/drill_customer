@@ -217,8 +217,9 @@ export default function ChatScreen() {
 
     // console.log("[ChatScreen] formData", formData);
     try {
+      console.log("chat history formData", formData);
       const response = await apiCall(formData);
-      // console.log("chat history", response);
+      console.log("chat history", response);
       if (response && response.chat) {
         const fromId = response.user.id;
 
@@ -247,10 +248,14 @@ export default function ChatScreen() {
             senderInfo = response.user;
           } else if (isSupportAgent) {
             sender = "support_agent";
+<<<<<<< HEAD
             senderInfo = {
               name: msg.sender || "Support Agent",
               image: null,
             };
+=======
+            senderInfo = { name: t("order.supportAgent"), image: null };
+>>>>>>> 0eb7132 (static text language change)
           }
 
           const senderName =
@@ -268,7 +273,17 @@ export default function ChatScreen() {
             sender: sender,
             timestamp: Number(msg.datetime),
             msgType: msg.msg_type === "file" ? "file" : "msg",
+<<<<<<< HEAD
             senderName,
+=======
+            senderName:
+              senderInfo?.name ||
+              (isUser
+                ? t("me")
+                : sender === "support_agent"
+                  ? t("order.supportAgent")
+                  : t("provider")),
+>>>>>>> 0eb7132 (static text language change)
             senderImage: senderInfo?.image || null,
           };
         });

@@ -14,7 +14,7 @@ export default function Welcome() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>{t("loading")}</Text>
         </View>
       </SafeAreaView>
     );

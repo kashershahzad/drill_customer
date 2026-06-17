@@ -60,7 +60,7 @@ export default function DeleteAccount() {
       if (response.result) {
         await logout();
         Alert.alert(t("success"), t("account.deleteAccountSuccess"), [
-          { text: "OK", onPress: () => router.replace("/welcome") },
+          { text: t("ok"), onPress: () => router.replace("/welcome") },
         ]);
       } else {
         Alert.alert(t("error"), response.message || t("account.deleteAccountError"));
@@ -87,15 +87,15 @@ export default function DeleteAccount() {
         <View style={styles.bulletList}>
           <View style={styles.bulletItem}>
             <Ionicons name="close-circle-outline" size={ms(20)} color={Colors.danger} />
-            <Text style={styles.bulletText}>All bookings and order history</Text>
+            <Text style={styles.bulletText}>{t("account.deleteAccountBullet1")}</Text>
           </View>
           <View style={styles.bulletItem}>
             <Ionicons name="close-circle-outline" size={ms(20)} color={Colors.danger} />
-            <Text style={styles.bulletText}>Profile and personal information</Text>
+            <Text style={styles.bulletText}>{t("account.deleteAccountBullet2")}</Text>
           </View>
           <View style={styles.bulletItem}>
             <Ionicons name="close-circle-outline" size={ms(20)} color={Colors.danger} />
-            <Text style={styles.bulletText}>Wallet balance and payment details</Text>
+            <Text style={styles.bulletText}>{t("account.deleteAccountBullet3")}</Text>
           </View>
         </View>
 

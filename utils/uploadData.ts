@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { Alert } from "react-native";
 import { apiCall } from "./api";
+import i18n from "./config";
 
 type ImageUploadResult = {
   success: boolean;
@@ -20,19 +21,19 @@ export const showImagePickerAlert = (
   onPickImage: (source: UploadSource, field: string) => void
 ) => {
   Alert.alert(
-    "Choose an option",
-    "How would you like to upload your image?",
+    i18n.t("alerts.selectOption"),
+    i18n.t("alerts.uploadImageTitle"),
     [
       {
-        text: "Take Photo",
+        text: i18n.t("order.takePhoto"),
         onPress: () => onPickImage("camera", field),
       },
       {
-        text: "Choose from Gallery",
+        text: i18n.t("order.chooseFromGallery"),
         onPress: () => onPickImage("gallery", field),
       },
       {
-        text: "Cancel",
+        text: i18n.t("cancel"),
         style: "cancel",
       },
     ],
@@ -61,7 +62,10 @@ export const pickImage = async (
         : await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permissionStatus.status !== "granted") {
-      Alert.alert("Permission Denied", "Camera or Gallery access is required.");
+      Alert.alert(
+        i18n.t("alerts.permissionDenied"),
+        i18n.t("alerts.cameraGalleryRequired")
+      );
       return;
     }
 
@@ -90,7 +94,7 @@ export const pickImage = async (
     }
   } catch (error) {
     console.error("Image picker error:", error);
-    onError("Failed to pick image. Please try again.");
+    onError(i18n.t("alerts.failedToPickImage"));
   }
 };
 
@@ -107,7 +111,7 @@ export const uploadImage = async (
   userId: string | null,
   onLoading: (isLoading: boolean) => void
 ): Promise<ImageUploadResult> => {
-  if (!uri) return { success: false, error: "No image URI provided" };
+  if (!uri) return { success: false, error: i18n.t("alerts.noImageUri") };
 
   try {
     onLoading(true);
@@ -138,14 +142,17 @@ export const uploadImage = async (
     } else {
       return {
         success: false,
-        error: response.message || "Failed to upload image",
+        error: response.message || i18n.t("order.failedToUploadImage"),
       };
     }
   } catch (error) {
     console.error("Upload error:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error occurred",
+      error:
+        error instanceof Error
+          ? error.message
+          : i18n.t("alerts.unknownError"),
     };
   } finally {
     onLoading(false);

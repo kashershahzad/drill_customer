@@ -41,6 +41,15 @@
   "submit": "إرسال",
   "retry": "إعادة المحاولة",
   "goBack": "العودة",
+  "ok": "موافق",
+  "notAvailable": "غ/م",
+  "apply": "تطبيق",
+  "step1": "الخطوة 1",
+  "step2": "الخطوة 2",
+  "dateAndTime": "التاريخ والوقت",
+  "invalidDateTime": "تاريخ/وقت غير صحيح",
+  "dateAtTime": "{{date}} في {{time}}",
+  "appLogo": "شعار التطبيق",
   "addCard": "إضافة بطاقة",
   "cardSavedSuccess": "تم حفظ البطاقة بنجاح.",
   "noDescription": "لم يتم تقديم وصف",
@@ -90,6 +99,8 @@
     "consentPrefix": "بالمتابعة، فإنك توافق على",
     "consentSuffix": ".",
     "invalidPhone": "يرجى إدخال رقم هاتف صحيح.",
+    "loginFailed": "فشل تسجيل الدخول.",
+    "countrySaudi": "المملكة العربية السعودية (+966)",
     "continueAsGuest": "متابعة كضيف"
   },
   "verify": {
@@ -132,7 +143,12 @@
     "languageNote": "سيتم إعادة تشغيل التطبيق لتطبيق تغييرات اللغة",
     "en": "الإنجليزية",
     "ar": "العربية",
-    "changeError": "فشل تغيير اللغة. يرجى المحاولة مرة أخرى."
+    "changeError": "فشل تغيير اللغة. يرجى المحاولة مرة أخرى.",
+    "selectLanguageOption": "اختر لغة {{language}}",
+    "languageFlag": "علم {{language}}",
+    "selected": "محدد",
+    "nativeEn": "English",
+    "nativeAr": "العربية"
   },
   "account": {
     "title": "الحساب",
@@ -183,7 +199,12 @@
     "deleteAccountSuccess": "تم حذف حسابك بشكل دائم.",
     "deleteAccountError": "فشل حذف الحساب. يرجى المحاولة مرة أخرى.",
     "deleteAccountConfirmTitle": "هل أنت متأكد تماماً؟",
-    "deleteAccountConfirmMessage": "سيتم حذف حسابك بشكل دائم. لا يمكن التراجع عن هذا الإجراء."
+    "deleteAccountConfirmMessage": "سيتم حذف حسابك بشكل دائم. لا يمكن التراجع عن هذا الإجراء.",
+    "deleteAccountBullet1": "جميع الحجوزات وسجل الطلبات",
+    "deleteAccountBullet2": "الملف الشخصي والمعلومات الشخصية",
+    "deleteAccountBullet3": "رصيد المحفظة وتفاصيل الدفع",
+    "failedToLoadProfile": "فشل تحميل الملف الشخصي.",
+    "cardListTitle": "البطاقات المحفوظة"
   },
   "booking": {
     "bookservice": "حجز الخدمة",
@@ -262,7 +283,19 @@
     "saveCardDetails": "حفظ تفاصيل بطاقتي للمرة القادمة.",
     "phoneNumber": "رقم الهاتف",
     "emailAddress": "البريد الإلكتروني",
-    "cardSaved": "تم حفظ البطاقة"
+    "cardSaved": "تم حفظ البطاقة",
+    "locationRequired": "الموقع مطلوب. يرجى اختيار موقع.",
+    "locationRequiredGoBack": "الموقع مطلوب. يرجى العودة واختيار موقع.",
+    "orderIdNotReceived": "لم يتم استلام رقم الطلب من الخادم",
+    "fetchingAddress": "جاري جلب العنوان...",
+    "scheduledService": "خدمة مجدولة",
+    "scheduledDateLabel": "التاريخ:",
+    "scheduledTimeLabel": "الوقت:",
+    "hoursPackageLabel": "باقة {{hours}} ساعات",
+    "cardExpiryPlaceholder": "MM/YY",
+    "phonePlaceholderExample": "0123456789",
+    "emailPlaceholderExample": "example@email.com",
+    "applyPromo": "تطبيق"
   },
   "order": {
     "loading": "جارٍ التحميل...",
@@ -312,7 +345,11 @@
     "cameraPermission": "نحتاج أذونات الكاميرا لالتقاط الصور!",
     "galleryPermission": "نحتاج أذونات المعرض للوصول إلى صورك!",
     "errorWithUpload": "حدث خطأ ما مع التحميل",
-    "failedToUploadImage": "فشل تحميل الصورة"
+    "failedToUploadImage": "فشل تحميل الصورة",
+    "supportAgent": "وكيل الدعم",
+    "supportAgentAdded": "تمت إضافة وكيل الدعم",
+    "providerNearby": "مقدم الخدمة قريب! يجب أن يصل قريباً.",
+    "paymentFailed": "فشل الدفع"
   },
   "popup": {
     "orderInfoNotFound": "لم يتم العثور على معلومات الطلب",
@@ -418,7 +455,10 @@
     "somethingWentWrong": "حدث خطأ ما",
     "invalidDate": "تاريخ غير صحيح",
     "invalidDateFormat": "يجب أن يكون تاريخ الميلاد بتنسيق YYYY-MM-DD.",
-    "failedToUpdateProfile": "فشل تحديث الملف الشخصي."
+    "failedToUpdateProfile": "فشل تحديث الملف الشخصي.",
+    "uploadImageTitle": "كيف تريد تحميل صورتك؟",
+    "noImageUri": "لم يتم توفير رابط الصورة",
+    "unknownError": "حدث خطأ غير معروف"
   },
   "privacy": {
     "title": "سياسة الخصوصية",
@@ -476,7 +516,9 @@
   "search": {
     "allServicesAvailable": "جميع الخدمات متاحة",
     "browseServices": "تصفح الخدمات",
-    "searchServices": "بحث الخدمات"
+    "searchServices": "بحث الخدمات",
+    "clearSearch": "مسح البحث",
+    "noCategoriesFound": "لم يتم العثور على فئات"
   },
   "popularServices": {
     "serviceProvider": "مقدم الخدمة",

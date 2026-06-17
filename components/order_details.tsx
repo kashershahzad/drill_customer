@@ -6,6 +6,7 @@ import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
 import { OrderType } from "~/types/dataTypes";
 import DashedSeparator from "./dashed_seprator";
+import { formatAppTime } from "~/utils/locale";
 
 // Helper function to format timestamp (time only, no date)
 const formatTimestamp = (timestamp: string): string => {
@@ -14,23 +15,19 @@ const formatTimestamp = (timestamp: string): string => {
     // If timestamp is already formatted (e.g., "Jan 13, 2026 10:05 AM"), extract time
     if (timestamp.includes(",") && timestamp.includes(":")) {
       // Extract time portion from formatted string (e.g., "10:05 AM")
-      const timeMatch = timestamp.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))/i);
+      const timeMatch = timestamp.match(/(\d{1,2}:\d{2}\s*(?:AM|PM|ص|م))/i);
       if (timeMatch) {
         return timeMatch[1];
       }
     }
-    // Parse datetime format: "2026-01-13 10:05:23"
     const date = new Date(timestamp);
     if (isNaN(date.getTime())) return timestamp;
 
-    let hours = date.getHours();
-    const minutes = date.getMinutes();
-    const ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const minutesStr = minutes < 10 ? `0${minutes}` : minutes;
-
-    return `${hours}:${minutesStr} ${ampm}`;
+    return formatAppTime(date, {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
   } catch (error) {
     return timestamp;
   }

@@ -25,6 +25,7 @@ import { getInputFontSize, inputFieldStyles } from "~/components/inputfield";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
+import { formatAppDate, formatAppTime } from "~/utils/locale";
 import { BOOKING_PAY_LATER_KEY } from "~/utils/booking";
 import { ms, s, vs } from "~/utils/responsive";
 import { createTapCharge } from "~/utils/tapPayment";
@@ -144,7 +145,7 @@ export default function ConfirmBooking() {
     if (!customerLat || !customerLng) {
       Alert.alert(
         t("error"),
-        "Location is required. Please select a location.",
+        t("booking.locationRequired"),
       );
       return null;
     }
@@ -193,7 +194,7 @@ export default function ConfirmBooking() {
     const orderId = getOrderIdFromResponse(response);
     if (!orderId) {
       console.error("Order created but id missing in response:", response);
-      Alert.alert(t("error"), "Order ID not received from server");
+      Alert.alert(t("error"), t("booking.orderIdNotReceived"));
       return null;
     }
 
@@ -346,15 +347,12 @@ export default function ConfirmBooking() {
                       {t("booking.scheduledDate")}:
                     </Text>
                     <Text style={styles.serviceInfoValue}>
-                      {new Date(params.schedule_date).toLocaleDateString(
-                        "en-US",
-                        {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        },
-                      )}
+                      {formatAppDate(new Date(params.schedule_date), {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
                     </Text>
                   </View>
                   <View style={styles.serviceInfoRow}>
@@ -362,13 +360,14 @@ export default function ConfirmBooking() {
                       {t("booking.scheduledTime")}:
                     </Text>
                     <Text style={styles.serviceInfoValue}>
-                      {new Date(
-                        `2000-01-01T${params.schedule_time}`,
-                      ).toLocaleTimeString("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      })}
+                      {formatAppTime(
+                        new Date(`2000-01-01T${params.schedule_time}`),
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        },
+                      )}
                     </Text>
                   </View>
                 </>
@@ -383,7 +382,7 @@ export default function ConfirmBooking() {
             <View>
               <Text style={styles.packageTitle}>{params.packageName}</Text>
               <Text style={styles.packageSubtitle}>
-                {params.packageHours} hours package
+                {t("booking.hoursPackageLabel", { hours: params.packageHours })}
               </Text>
             </View>
             <Text style={styles.packagePrice}>SAR {packagePrice}</Text>
@@ -417,7 +416,7 @@ export default function ConfirmBooking() {
               style={styles.applyButton}
               onPress={handleVerifyPromoCode}
             >
-              <Text style={styles.applyButtonText}>Apply</Text>
+              <Text style={styles.applyButtonText}>{t("booking.applyPromo")}</Text>
             </TouchableOpacity>
           </View>
 

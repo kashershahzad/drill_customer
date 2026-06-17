@@ -62,7 +62,7 @@ export default function AddCard() {
             <Text style={styles.label}>{t("booking.expired")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="MM/YY"
+              placeholder={t("booking.cardExpiryPlaceholder")}
               placeholderTextColor={Colors.secondary300}
               keyboardType="numeric"
             />
@@ -88,7 +88,7 @@ export default function AddCard() {
             <Text style={styles.label}>{t("booking.phoneNumber")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="0123456789"
+              placeholder={t("booking.phonePlaceholderExample")}
               placeholderTextColor={Colors.secondary300}
               keyboardType="phone-pad"
             />
@@ -96,7 +96,7 @@ export default function AddCard() {
             <Text style={styles.label}>{t("booking.emailAddress")}</Text>
             <TextInput
               style={styles.input}
-              placeholder="example@email.com"
+              placeholder={t("booking.emailPlaceholderExample")}
               placeholderTextColor={Colors.secondary300}
               keyboardType="email-address"
             />

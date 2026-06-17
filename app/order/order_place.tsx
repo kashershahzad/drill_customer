@@ -160,6 +160,7 @@ const OrderPlace: React.FC = () => {
     try {
       const response = await apiCall(formData);
       console.log("order details", response);
+      console.log("order details formData", formData);
 
       if (response && response.data && response.data.length > 0) {
         const orderData = response.data[0];
@@ -261,7 +262,7 @@ const OrderPlace: React.FC = () => {
       if (distance <= 300 && !proximityPopupShownRef.current) {
         proximityPopupShownRef.current = true;
         setPopupType("arrived");
-        showToast("Provider is nearby! They should arrive soon.", "success");
+        showToast(t("order.providerNearby"), "success");
       }
     } catch (error) {
       console.error("❌ Error checking proximity:", error);
@@ -280,8 +281,10 @@ const OrderPlace: React.FC = () => {
           formData.append("type", "get_data");
           formData.append("table_name", "orders");
           formData.append("id", orderId);
-
           const response = await apiCall(formData);
+          // console.log("order data formData", formData);
+          // console.log("order data", response);
+
           if (response && response.data && response.data.length > 0) {
             const latestOrderData = response.data[0];
             setOrder(latestOrderData);
@@ -396,11 +399,15 @@ const OrderPlace: React.FC = () => {
         const amount = parseFloat(order?.amount || "0");
         const tipAmount = parseFloat(tipAmountStr || "0") || 0;
 
-        console.log("[Pay Now] Starting Tap payment for order:", parsedOrderId, {
-          amount,
-          tipAmount,
-          total: amount + tipAmount,
-        });
+        console.log(
+          "[Pay Now] Starting Tap payment for order:",
+          parsedOrderId,
+          {
+            amount,
+            tipAmount,
+            total: amount + tipAmount,
+          },
+        );
         const response = await createTapCharge(
           amount,
           "SAR",
@@ -410,7 +417,7 @@ const OrderPlace: React.FC = () => {
         console.log("[Pay Now] Tap payment response:", response);
       } catch (error) {
         console.error("[Pay Now] Error:", error);
-        showToast(t("order.paymentFailed") || "Payment failed", "error");
+        showToast(t("order.paymentFailed"), "error");
       } finally {
         setIsPayingNow(false);
       }

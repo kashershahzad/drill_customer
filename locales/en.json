@@ -41,6 +41,15 @@
   "submit": "Submit",
   "retry": "Retry",
   "goBack": "Go Back",
+  "ok": "OK",
+  "notAvailable": "N/A",
+  "apply": "Apply",
+  "step1": "Step 1",
+  "step2": "Step 2",
+  "dateAndTime": "Date & Time",
+  "invalidDateTime": "Invalid date/time",
+  "dateAtTime": "{{date}} at {{time}}",
+  "appLogo": "App logo",
   "addCard": "Add Card",
   "cardSavedSuccess": "Card saved successfully.",
   "noDescription": "No description provided",
@@ -90,6 +99,8 @@
     "consentPrefix": "By continuing, you agree to our",
     "consentSuffix": ".",
     "invalidPhone": "Please enter a valid phone number.",
+    "loginFailed": "Login failed.",
+    "countrySaudi": "Kingdom Saudi Arabia (+966)",
     "continueAsGuest": "Continue as Guest"
   },
   "verify": {
@@ -132,7 +143,12 @@
     "languageNote": "The app will restart to apply language changes",
     "en": "English",
     "ar": "Arabic",
-    "changeError": "Failed to change language. Please try again."
+    "changeError": "Failed to change language. Please try again.",
+    "selectLanguageOption": "Select {{language}} language",
+    "languageFlag": "{{language}} flag",
+    "selected": "Selected",
+    "nativeEn": "English",
+    "nativeAr": "العربية"
   },
   "account": {
     "title": "Account",
@@ -183,7 +199,12 @@
     "deleteAccountSuccess": "Your account has been permanently deleted.",
     "deleteAccountError": "Failed to delete account. Please try again.",
     "deleteAccountConfirmTitle": "Are you absolutely sure?",
-    "deleteAccountConfirmMessage": "Your account will be permanently deleted. This cannot be undone."
+    "deleteAccountConfirmMessage": "Your account will be permanently deleted. This cannot be undone.",
+    "deleteAccountBullet1": "All bookings and order history",
+    "deleteAccountBullet2": "Profile and personal information",
+    "deleteAccountBullet3": "Wallet balance and payment details",
+    "failedToLoadProfile": "Failed to load profile.",
+    "cardListTitle": "Saved Cards"
   },
   "booking": {
     "bookservice": "Book Service",
@@ -262,7 +283,19 @@
     "saveCardDetails": "Save my card details for next time.",
     "phoneNumber": "Phone number",
     "emailAddress": "Email address",
-    "cardSaved": "Card Saved"
+    "cardSaved": "Card Saved",
+    "locationRequired": "Location is required. Please select a location.",
+    "locationRequiredGoBack": "Location is required. Please go back and select a location.",
+    "orderIdNotReceived": "Order ID not received from server",
+    "fetchingAddress": "Fetching address...",
+    "scheduledService": "Scheduled Service",
+    "scheduledDateLabel": "Date:",
+    "scheduledTimeLabel": "Time:",
+    "hoursPackageLabel": "{{hours}} hours package",
+    "cardExpiryPlaceholder": "MM/YY",
+    "phonePlaceholderExample": "0123456789",
+    "emailPlaceholderExample": "example@email.com",
+    "applyPromo": "Apply"
   },
   "order": {
     "loading": "Loading...",
@@ -312,7 +345,11 @@
     "cameraPermission": "We need camera permissions to take pictures!",
     "galleryPermission": "We need gallery permissions to access your photos!",
     "errorWithUpload": "Something went wrong with upload",
-    "failedToUploadImage": "Failed to upload image"
+    "failedToUploadImage": "Failed to upload image",
+    "supportAgent": "Support Agent",
+    "supportAgentAdded": "Support Agent Added",
+    "providerNearby": "Provider is nearby! They should arrive soon.",
+    "paymentFailed": "Payment failed"
   },
   "popup": {
     "orderInfoNotFound": "Order information not found",
@@ -418,7 +455,10 @@
     "somethingWentWrong": "Something went wrong",
     "invalidDate": "Invalid Date",
     "invalidDateFormat": "DOB must be in YYYY-MM-DD format.",
-    "failedToUpdateProfile": "Failed to update profile."
+    "failedToUpdateProfile": "Failed to update profile.",
+    "uploadImageTitle": "How would you like to upload your image?",
+    "noImageUri": "No image URI provided",
+    "unknownError": "Unknown error occurred"
   },
   "privacy": {
     "title": "Privacy Policy",
@@ -476,7 +516,9 @@
   "search": {
     "allServicesAvailable": "All Services Available",
     "browseServices": "Browse services",
-    "searchServices": "Search services"
+    "searchServices": "Search services",
+    "clearSearch": "Clear search",
+    "noCategoriesFound": "No categories found"
   },
   "popularServices": {
     "serviceProvider": "Service Provider",

@@ -54,7 +54,7 @@ export default function Header({
     try {
       const orderId = await AsyncStorage.getItem("order_id");
       if (!orderId) {
-        Alert.alert(t("error") || "Error", t("header.noActiveOrder"));
+        Alert.alert(t("error"), t("header.noActiveOrder"));
         return;
       }
       const formData = new FormData();
@@ -66,10 +66,10 @@ export default function Header({
       if (response && response.result) {
         router.push({ pathname: "/order/order_place", params: { tab: "Chat" } });
       } else {
-        Alert.alert(t("error") || "Error", t("header.failedToSubmitSupport"));
+        Alert.alert(t("error"), t("header.failedToSubmitSupport"));
       }
     } catch (error) {
-      Alert.alert(t("error") || "Error", t("header.errorOccurred"));
+      Alert.alert(t("error"), t("header.errorOccurred"));
     }
   };
 
@@ -81,7 +81,7 @@ export default function Header({
             style={styles.backButton}
             onPress={handleGoBack}
             accessibilityRole="button"
-            accessibilityLabel={t("header.back") || "Go back"}
+            accessibilityLabel={t("header.back")}
           >
             <AntDesign name="left" size={s(22)} color={Colors.secondary} />
           </TouchableOpacity>
@@ -93,7 +93,7 @@ export default function Header({
             <Image
               source={require("@/assets/images/logo.png")}
               style={styles.userImage}
-              accessibilityLabel={t("welcome") || "App logo"}
+              accessibilityLabel={t("appLogo")}
             />
             <View>
               <Text style={styles.welcomeText}>{t("welcome")}</Text>
@@ -109,7 +109,7 @@ export default function Header({
             style={styles.iconButton}
             onPress={handleSupport}
             accessibilityRole="button"
-            accessibilityLabel={t("header.chatSupport") || "Chat with support"}
+            accessibilityLabel={t("header.chatSupport")}
           >
             <ChatSupport width={s(40)} height={s(40)} />
           </TouchableOpacity>
@@ -118,7 +118,7 @@ export default function Header({
             style={styles.notificationButton}
             onPress={handleNotification}
             accessibilityRole="button"
-            accessibilityLabel={t("notifications") || "Notifications"}
+            accessibilityLabel={t("notifications")}
           >
             <NotificationBell width={s(24)} height={s(24)} />
           </TouchableOpacity>
