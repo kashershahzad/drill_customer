@@ -17,8 +17,8 @@ import {
 } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 import Button from "./button";
 import { getInputFontSize, inputFieldStyles } from "./inputfield";
 
@@ -96,9 +96,11 @@ export default function Popup({
     }
   };
 
-  const saveTipToOrder = async (amount: string) => {
-    if (!orderId) {
-      throw new Error("order_not_found");
+  const submitTip = async (amount: string, tipStatus: "0" | "1") => {
+    const userId = await AsyncStorage.getItem("user_id");
+
+    if (!userId || !orderId) {
+      throw new Error("user_or_order_not_found");
     }
 
     const parsedOrderId = orderId.startsWith('"')
@@ -106,17 +108,22 @@ export default function Popup({
       : orderId;
 
     const formData = new FormData();
-    formData.append("type", "update_data");
-    formData.append("table_name", "orders");
-    formData.append("id", String(parsedOrderId));
-    formData.append("tip_amount", amount || "0");
+    formData.append("type", "paytip");
+    formData.append("tipamount", amount || "0");
+    formData.append("order_id", String(parsedOrderId));
+    formData.append("user_id", userId);
+    formData.append("tipStatus", tipStatus);
 
-    return apiCall(formData);
+    console.log("submitTip formData", formData);
+
+    const response = await apiCall(formData);
+    console.log("submitTip response", response);
+    return response;
   };
 
   const handleTipSubmit = async () => {
     try {
-      const response = await saveTipToOrder(tipAmount);
+      const response = await submitTip(tipAmount || "0", "1");
 
       if (response && response.result === true) {
         setShowPopup("review");
@@ -130,6 +137,12 @@ export default function Popup({
   };
 
   const handleTipSkip = async () => {
+    try {
+      await submitTip("0", "0");
+    } catch (error) {
+      console.warn("[Tip] skip save failed:", error);
+    }
+
     if (onTipForPayment) {
       setShowPopup(null);
       await onTipForPayment("0");
@@ -145,7 +158,7 @@ export default function Popup({
       setShowPopup(null);
 
       try {
-        await saveTipToOrder(tipValue);
+        await submitTip(tipValue, "1");
       } catch (error) {
         console.warn("[Tip] save failed, continuing payment:", error);
       }
@@ -166,17 +179,21 @@ export default function Popup({
         return;
       }
 
+      const parsedOrderId = orderId.startsWith('"')
+        ? JSON.parse(orderId)
+        : orderId;
+
       const formData = new FormData();
-      formData.append("type", "add_data");
-      formData.append("table_name", "reviews");
-      formData.append("order_id", orderId);
+      formData.append("type", "addRating");
+      formData.append("rating", rating.toString());
+      formData.append("order_id", String(parsedOrderId));
       formData.append("user_id", userId);
-      formData.append("rating", rating.toString()); // Rating is a number, safe to send
-      formData.append("review", review); // Review text - user input, can be in any language
-      formData.append("review_by", "user"); // Use English key for backend
+      formData.append("comment", review);
 
       const response = await apiCall(formData);
 
+      console.log("review response", response);
+      console.log("review formData", formData);
       if (response && response.result === true) {
         // Show order complete popup after review submission
         setShowPopup("orderComplete");
@@ -337,7 +354,10 @@ export default function Popup({
                   })}
                 </Text>
                 <TextInput
-                  style={[styles.textarea, { fontSize: getInputFontSize(review) }]}
+                  style={[
+                    styles.textarea,
+                    { fontSize: getInputFontSize(review) },
+                  ]}
                   placeholder={t("popup.writeReview")}
                   placeholderTextColor={Colors.secondary300}
                   multiline
@@ -408,26 +428,84 @@ export default function Popup({
 }
 
 const styles = StyleSheet.create({
-  container: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: Colors.white, borderRadius: ms(20), width: "100%", elevation: 1, shadowColor: Colors.gray100, shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 4, zIndex: 99, paddingVertical: vs(18), paddingHorizontal: s(16), alignItems: "center" },
+  container: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: Colors.white,
+    borderRadius: ms(20),
+    width: "100%",
+    elevation: 1,
+    shadowColor: Colors.gray100,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    zIndex: 99,
+    paddingVertical: vs(18),
+    paddingHorizontal: s(16),
+    alignItems: "center",
+  },
   content: { alignItems: "center", marginBottom: vs(14), width: "100%" },
-  dateTime: { color: Colors.secondary300, fontSize: ms(12), marginBottom: vs(9) },
-  arrivedImageContainer: { backgroundColor: Colors.primary300, borderRadius: ms(16), padding: s(10), marginBottom: vs(13), width: "90%", alignItems: "center" },
+  dateTime: {
+    color: Colors.secondary300,
+    fontSize: ms(12),
+    marginBottom: vs(9),
+  },
+  arrivedImageContainer: {
+    backgroundColor: Colors.primary300,
+    borderRadius: ms(16),
+    padding: s(10),
+    marginBottom: vs(13),
+    width: "90%",
+    alignItems: "center",
+  },
   arrivedImage: { width: s(180), height: vs(150) },
   image: { marginBottom: vs(10) },
-  title: { color: Colors.secondary, fontSize: ms(21), fontFamily: FONTS.bold, textAlign: "center", marginBottom: vs(7) },
-  description: { color: Colors.secondary300, fontSize: ms(13), fontFamily: FONTS.regular, textAlign: "center", marginBottom: vs(14), paddingHorizontal: s(10) },
+  title: {
+    color: Colors.secondary,
+    fontSize: ms(21),
+    fontFamily: FONTS.bold,
+    textAlign: "center",
+    marginBottom: vs(7),
+  },
+  description: {
+    color: Colors.secondary300,
+    fontSize: ms(13),
+    fontFamily: FONTS.regular,
+    textAlign: "center",
+    marginBottom: vs(14),
+    paddingHorizontal: s(10),
+  },
   input: {
     ...inputFieldStyles.field,
     marginTop: vs(9),
     textAlign: "center",
   },
-  starsContainer: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginVertical: vs(9), gap: s(7) },
-  ratingText: { fontSize: ms(15), fontFamily: FONTS.bold, color: Colors.black, textAlign: "center", marginTop: vs(5) },
+  starsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: vs(9),
+    gap: s(7),
+  },
+  ratingText: {
+    fontSize: ms(15),
+    fontFamily: FONTS.bold,
+    color: Colors.black,
+    textAlign: "center",
+    marginTop: vs(5),
+  },
   textarea: {
     ...inputFieldStyles.field,
     marginTop: vs(9),
     textAlignVertical: "top",
     minHeight: vs(90),
   },
-  footerButtons: { flexDirection: "row", justifyContent: "space-between", width: "100%", gap: s(6) },
+  footerButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: s(6),
+  },
 });
