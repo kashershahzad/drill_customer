@@ -443,20 +443,25 @@ const OrderPlace: React.FC = () => {
     const latitude = await AsyncStorage.getItem("latitude");
     const longitude = await AsyncStorage.getItem("longitude");
     if (orderId) {
+      const parsedOrderId = orderId.startsWith('"')
+        ? JSON.parse(orderId)
+        : orderId;
+
       const formData = new FormData();
       formData.append("type", "add_data");
-      formData.append("table_name", "orders_history");
-      formData.append("user_id", userId);
+      formData.append("table_name", "order_history");
+      formData.append("user_id", userId || "");
       formData.append("lat", latitude || "");
       formData.append("lng", longitude || "");
-      formData.append("order_id", orderId);
+      formData.append("order_id", parsedOrderId);
       formData.append("status", "cancelled");
 
       try {
         const response = await apiCall(formData);
         if (response && response.result === true) {
+          await AsyncStorage.removeItem("order_id");
           showToast(t("order.orderCancelledSuccess"), "success");
-          router.replace("/(tabs)");
+          router.replace("/(tabs)/orders");
         } else {
           showToast(t("order.failedToCancel"), "error");
         }
@@ -485,7 +490,7 @@ const OrderPlace: React.FC = () => {
       const formData = new FormData();
       formData.append("type", "add_data");
       formData.append("table_name", "order_history");
-      formData.append("user_id", userId);
+      formData.append("user_id", userId || "");
       formData.append("lat", latitude || "");
       formData.append("lng", longitude || "");
       formData.append("order_id", orderId);
@@ -608,11 +613,11 @@ const OrderPlace: React.FC = () => {
           ) : order?.status === "completed" ? null : order.payment_status ===
             "paid" ? (
             <Button
-              title={t("order.completeOrder")}
-              variant="primary"
+              title={t("cancel")}
+              variant="secondary"
               fullWidth={true}
               width="100%"
-              onPress={handleCompleteOrder}
+              onPress={handleCancel}
             />
           ) : order.status === "pending" ||
             order.status === "on_the_way" ||
