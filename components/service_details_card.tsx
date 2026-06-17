@@ -71,11 +71,14 @@ export default function ServiceDetailsCard({
 
   const isCancelled = order.status?.toLowerCase() === "cancelled";
   const isDisabled = isCancelled || disabled;
-
+  const isCompleted = order.status?.toLowerCase() === "completed";
+  const showRating = isCompleted && Number(order.rating) > 0;
+  const showTip =
+    isCompleted && (order.tip_status === "1" || order.tip_status === 1);
+  const tipAmount = order.tip_amount ?? order.tip ?? "0";
 
   // Get the status style for the current order
   const statusStyle = getStatusStyle(order.status);
-  console.log("order?.paymentStatus", order?.payment_status);
   return (
     <TouchableOpacity onPress={isDisabled ? undefined : onPress} disabled={isDisabled} activeOpacity={isDisabled ? 1 : 0.7} style={[styles.card, isDisabled && styles.cardDisabled]}>
       {/* Order Top Section */}
@@ -187,21 +190,25 @@ export default function ServiceDetailsCard({
             {order?.paymentStatus || order?.payment_status}
           </Text>
         </View>
-        {order.status === "completed" && (
+        {showRating && (
           <>
             <DashedSeprator />
             <View style={styles.detailsRow}>
               <Text style={styles.label}>{t("popup.rateExperience")}</Text>
               <View style={styles.ratingContainer}>
                 <Text style={styles.starIcon}>★</Text>
-                <Text style={styles.value}>{order.rating || "0"}</Text>
+                <Text style={styles.value}>{order.rating}</Text>
               </View>
             </View>
+          </>
+        )}
+        {showTip && (
+          <>
             <DashedSeprator />
             <View style={styles.detailsRow}>
               <Text style={styles.label}>{t("popup.addTip")}</Text>
               <Text style={styles.tip}>
-                {t("wallet.sar")} {order.tip || "0.00"}
+                {t("wallet.sar")} {tipAmount}
               </Text>
             </View>
           </>

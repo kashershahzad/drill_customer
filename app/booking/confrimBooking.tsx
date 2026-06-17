@@ -8,7 +8,7 @@ import Seprator from "@/components/seprator";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -84,7 +84,6 @@ export default function ConfirmBooking() {
   const [discount, setDiscount] = useState(0);
   const [isPromoValid, setIsPromoValid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const payLaterAutoSubmitted = useRef(false);
 
   // Calculate price details
   const packagePrice = Number(params.packagePrice || 200);
@@ -226,13 +225,6 @@ export default function ConfirmBooking() {
       setIsSubmitting(false);
     }
   };
-
-  useEffect(() => {
-    if (!payLaterParam || payLaterAutoSubmitted.current) return;
-
-    payLaterAutoSubmitted.current = true;
-    confirmPayLaterOrder();
-  }, [payLaterParam]);
 
   const handleTapPayment = async () => {
     console.log("[Tap] Step 1: creating order...");
@@ -458,7 +450,7 @@ export default function ConfirmBooking() {
           }
           onPress={handleConfirmBooking}
           style={styles.button}
-          disabled={isSubmitting || payLaterParam}
+          disabled={isSubmitting}
         />
       </View>
     </SafeAreaView>

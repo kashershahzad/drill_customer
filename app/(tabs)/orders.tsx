@@ -78,8 +78,11 @@ export default function Orders() {
     formData.append("table_name", "orders");
     formData.append("user_id", userId);
 
+    console.log("[Orders] formData", formData);
+
     try {
       const response = await apiCall(formData);
+      console.log("[Orders] response", response);
       if (response && response.data && response.data.length > 0) {
         const orders = response.data;
         setOrders(orders);
