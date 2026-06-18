@@ -70,10 +70,17 @@ const OrderPlace: React.FC = () => {
   const orderPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const orderRef = useRef<OrderType | null>(null);
   const orderIdRef = useRef<string | null>(null);
+  const popupTypeRef = useRef<PopupType | null>(null);
   const proximityPopupShownRef = useRef<boolean>(false);
 
   const POLL_INTERVAL_MS = 5000;
   const TERMINAL_ORDER_STATUSES = ["completed", "cancelled"];
+
+  const normalizeStatus = (status?: string | null) =>
+    status?.toLowerCase().trim() || "";
+
+  const isPastArrivedPhase = (status: string) =>
+    ["started", "in_progress", "completed", "time_up"].includes(status);
 
   const parseStoredOrderId = (id: string | null): string | null => {
     if (!id) return null;
@@ -96,6 +103,10 @@ const OrderPlace: React.FC = () => {
   useEffect(() => {
     orderIdRef.current = orderId;
   }, [orderId]);
+
+  useEffect(() => {
+    popupTypeRef.current = popupType;
+  }, [popupType]);
 
   useEffect(() => {
     if (popupType) {
@@ -142,20 +153,21 @@ const OrderPlace: React.FC = () => {
 
   const applyOrderUpdate = (orderData: OrderType) => {
     const previousOrder = orderRef.current;
+    const previousStatus = normalizeStatus(previousOrder?.status);
+    const nextStatus = normalizeStatus(orderData.status);
 
-    if (previousOrder && previousOrder.status !== orderData.status) {
+    if (previousOrder && previousStatus !== nextStatus) {
       handleOrderStatusChange(
         previousOrder.status || "",
         orderData.status || "",
       );
     } else if (!previousOrder && orderData.status) {
-      lastShownStatusRef.current = orderData.status ?? null;
-    } else if (previousOrder && previousOrder.status === orderData.status) {
-      if (
-        lastShownStatusRef.current !== orderData.status &&
-        orderData.status !== "arrived"
-      ) {
-        lastShownStatusRef.current = orderData.status ?? null;
+      if (nextStatus === "arrived") {
+        showStatusNotification("arrived", undefined, true);
+      } else {
+        lastShownStatusRef.current = isPastArrivedPhase(nextStatus)
+          ? "arrived"
+          : (orderData.status ?? null);
       }
     }
 
@@ -167,7 +179,7 @@ const OrderPlace: React.FC = () => {
       orderData.provider?.lat && orderData.provider?.lng;
     const hasCustomerLocation = orderData.lat && orderData.lng;
     const isActiveStatus =
-      orderData.status === "accepted" || orderData.status === "on_the_way";
+      nextStatus === "accepted" || nextStatus === "on_the_way";
 
     if (
       hasProvider &&
@@ -175,15 +187,12 @@ const OrderPlace: React.FC = () => {
       hasCustomerLocation &&
       isActiveStatus
     ) {
-      startProximityCheck(orderData);
+      ensureProximityCheck(orderData);
     } else {
       stopProximityCheck();
     }
 
-    if (
-      orderData.status &&
-      TERMINAL_ORDER_STATUSES.includes(orderData.status)
-    ) {
+    if (nextStatus && TERMINAL_ORDER_STATUSES.includes(nextStatus)) {
       stopOrderPolling();
     }
   };
@@ -304,10 +313,13 @@ const OrderPlace: React.FC = () => {
         providerLng,
       );
 
-      if (distance <= 300 && !proximityPopupShownRef.current) {
+      if (
+        distance <= 300 &&
+        normalizeStatus(orderData.status) === "arrived" &&
+        !proximityPopupShownRef.current
+      ) {
         proximityPopupShownRef.current = true;
-        setPopupType("arrived");
-        showToast(t("order.providerNearby"), "success");
+        showStatusNotification("arrived", undefined, true);
       }
     } catch (error) {
       console.error("❌ Error checking proximity:", error);
@@ -315,7 +327,6 @@ const OrderPlace: React.FC = () => {
   };
 
   const startProximityCheck = (orderData: OrderType) => {
-    stopProximityCheck();
     proximityPopupShownRef.current = false;
     checkProximity(orderData);
 
@@ -324,6 +335,15 @@ const OrderPlace: React.FC = () => {
         checkProximity(orderRef.current);
       }
     }, POLL_INTERVAL_MS);
+  };
+
+  const ensureProximityCheck = (orderData: OrderType) => {
+    if (proximityCheckIntervalRef.current) {
+      checkProximity(orderData);
+      return;
+    }
+
+    startProximityCheck(orderData);
   };
 
   const stopProximityCheck = () => {
@@ -356,15 +376,18 @@ const OrderPlace: React.FC = () => {
           toastType = "info";
           break;
         case "arrived":
+          if (normalizeStatus(status) !== "arrived") return;
+
           message = t("order.providerArrived");
           toastType = "success";
           if (
             forceShow ||
             (lastShownStatusRef.current !== "arrived" &&
-              popupType !== "arrived")
+              popupTypeRef.current !== "arrived")
           ) {
             lastShownStatusRef.current = "arrived";
             setPopupType("arrived");
+            showToast(message, toastType as any);
           }
           return;
         case "started":
@@ -380,7 +403,7 @@ const OrderPlace: React.FC = () => {
           toastType = "success";
           if (
             lastShownStatusRef.current !== "completed" &&
-            popupType !== "orderComplete"
+            popupTypeRef.current !== "orderComplete"
           ) {
             lastShownStatusRef.current = "completed";
             setPopupType("orderComplete");
@@ -393,7 +416,7 @@ const OrderPlace: React.FC = () => {
         case "time_up":
           if (
             lastShownStatusRef.current !== "time_up" &&
-            popupType !== "time-up"
+            popupTypeRef.current !== "time-up"
           ) {
             lastShownStatusRef.current = "time_up";
             setPopupType("time-up");
@@ -426,16 +449,16 @@ const OrderPlace: React.FC = () => {
 
       if (currentOrderId && incomingOrderId !== currentOrderId) return;
 
-      if (data.status === "arrived") {
-        lastShownStatusRef.current = null;
-      }
-
       await refreshOrderDetails(incomingOrderId);
 
-      if (data.status) {
-        const forceShow = data.status === "arrived";
-        showStatusNotification(data.status, data.message, forceShow);
-      }
+      const liveStatus = normalizeStatus(orderRef.current?.status);
+      if (!data.status || normalizeStatus(data.status) !== liveStatus) return;
+
+      showStatusNotification(
+        data.status,
+        data.message,
+        liveStatus === "arrived",
+      );
     };
 
     initFCM();
@@ -523,6 +546,22 @@ const OrderPlace: React.FC = () => {
     setManualCompletionFlow(false);
   };
 
+  const handleArrivedConfirmed = async () => {
+    if (!orderId) return;
+
+    const parsedOrderId = parseStoredOrderId(orderId) ?? orderId;
+    lastShownStatusRef.current = "started";
+
+    setOrder((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, status: "started" };
+      orderRef.current = updated;
+      return updated;
+    });
+
+    await refreshOrderDetails(parsedOrderId);
+  };
+
   const handleCancel = async () => {
     const userId = await AsyncStorage.getItem("user_id");
     const latitude = await AsyncStorage.getItem("latitude");
@@ -606,7 +645,7 @@ const OrderPlace: React.FC = () => {
             title={t("order.loading")}
             icon={true}
             support={true}
-            backAddress={"/(tabs)"}
+            backAddress={"/(tabs)/orders"}
           />
           <View style={styles.loadingContainer}>
             <ActivityIndicator size={"large"} />
@@ -625,7 +664,7 @@ const OrderPlace: React.FC = () => {
             title={t("order.orderDetails")}
             icon={true}
             support={true}
-            backAddress={"/(tabs)"}
+            backAddress={"/(tabs)/orders"}
           />
           <View style={styles.loadingContainer}>
             <Text>{t("order.noOrderDetails")}</Text>
@@ -643,7 +682,7 @@ const OrderPlace: React.FC = () => {
           title={`${t("order.request")} #${order.order_no}`}
           icon={true}
           support={true}
-          backAddress={"/(tabs)"}
+          backAddress={"/(tabs)/orders"}
         />
         <View style={styles.tabContainer}>
           <TouchableOpacity
@@ -791,6 +830,9 @@ const OrderPlace: React.FC = () => {
                 }
                 onTipForPayment={
                   popupType === "tipup" ? processTapPayment : undefined
+                }
+                onOrderUpdated={
+                  popupType === "arrived" ? handleArrivedConfirmed : undefined
                 }
               />
             </View>

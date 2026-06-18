@@ -15,11 +15,13 @@ import Header from "~/components/header";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
+import { getLocalizedText } from "~/utils/locale";
 import { ms, s, vs } from "~/utils/responsive";
 
 interface Package {
   id: string;
   name: string;
+  translation?: string;
   hours: number;
   price: number;
   features?: string[];
@@ -52,6 +54,7 @@ export default function Packages() {
         const transformedPlans = response.data.map((plan: any) => ({
           id: plan.id,
           name: plan.name,
+          translation: plan.translation || plan.translations || "",
           hours: parseInt(plan.hours) || 0,
           price: parseFloat(plan.price) || 0,
           features: plan.features ? JSON.parse(plan.features) : [],
@@ -78,6 +81,7 @@ export default function Packages() {
 
   const renderPackageCard = (pkg: Package) => {
     const isSelected = selectedPackage?.id === pkg.id;
+    const packageName = getLocalizedText(pkg.translation, pkg.name);
 
     return (
       <TouchableOpacity
@@ -88,7 +92,7 @@ export default function Packages() {
       >
         <View style={styles.rowBetween}>
           <View>
-            <Text style={styles.packageName}>{pkg.name}</Text>
+            <Text style={styles.packageName}>{packageName}</Text>
             <Text style={styles.packageDetails}>
               {pkg.hours} {t("booking.hoursPackage")} {pkg.price.toFixed(2)}
             </Text>

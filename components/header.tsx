@@ -45,10 +45,16 @@ export default function Header({
   };
   const handleGoBack = () => {
     if (backAddress) {
-      router.push(backAddress);
-    } else {
-      navigation.goBack();
+      router.replace(backAddress);
+      return;
     }
+
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+
+    router.replace("/(tabs)/orders");
   };
   const handleSupport = async () => {
     try {

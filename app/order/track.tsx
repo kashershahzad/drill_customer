@@ -478,6 +478,7 @@ export default function Track() {
           title={t("order.trackCustomer")}
           icon={true}
           support={true}
+          backAddress="/order/order_place"
         />
       </View>
 

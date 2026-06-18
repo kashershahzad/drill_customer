@@ -5,7 +5,7 @@ import StarIcon from "@/assets/svgs/Star.svg";
 import Timeup from "@/assets/svgs/timeup.svg";
 import Tipup from "@/assets/svgs/tipup.svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -40,6 +40,7 @@ type PopupProps = {
   onCompleted?: () => void;
   onTipForPayment?: (tipAmount: string) => void | Promise<void>;
   onCompleteToReview?: () => void;
+  onOrderUpdated?: () => void | Promise<void>;
 };
 
 export default function Popup({
@@ -49,11 +50,23 @@ export default function Popup({
   onCompleted,
   onTipForPayment,
   onCompleteToReview,
+  onOrderUpdated,
 }: PopupProps) {
   const { t } = useTranslation();
   const [tipAmount, setTipAmount] = useState("");
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
+
+  useEffect(() => {
+    if (type !== "orderComplete") return;
+
+    const timer = setTimeout(() => {
+      setShowPopup("review");
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [type, setShowPopup]);
+
   console.log("type", type);
   const handleNext = () => {
     setShowPopup(null);
@@ -73,20 +86,25 @@ export default function Popup({
         return;
       }
 
+      const parsedOrderId = orderId.startsWith('"')
+        ? JSON.parse(orderId)
+        : orderId;
+
       const formData = new FormData();
       formData.append("type", "add_data");
       formData.append("table_name", "order_history");
-      formData.append("user_id", userId);
+      formData.append("user_id", userId || "");
       formData.append("lat", latitude || "");
       formData.append("lng", longitude || "");
-      formData.append("order_id", orderId);
-      formData.append("status", "started"); // Use English key for backend
+      formData.append("order_id", String(parsedOrderId));
+      formData.append("status", "started");
 
-      console.log(formData);
       const response = await apiCall(formData);
       if (response && response.result === true) {
         setShowPopup(null);
-        // Alert.alert("Success", "Service has been started");
+        if (onOrderUpdated) {
+          await onOrderUpdated();
+        }
       } else {
         Alert.alert(t("error"), t("popup.failedToStartService"));
       }
@@ -184,19 +202,24 @@ export default function Popup({
         : orderId;
 
       const formData = new FormData();
-      formData.append("type", "addRating");
-      formData.append("rating", rating.toString());
+      formData.append("type", "add_data");
+      formData.append("table_name", "reviews");
       formData.append("order_id", String(parsedOrderId));
       formData.append("user_id", userId);
-      formData.append("comment", review);
+      formData.append("rating", rating.toString());
+      formData.append("review", review);
+      formData.append("review_by", "customer");
 
       const response = await apiCall(formData);
 
       console.log("review response", response);
       console.log("review formData", formData);
       if (response && response.result === true) {
-        // Show order complete popup after review submission
-        setShowPopup("orderComplete");
+        if (onCompleted) {
+          await onCompleted();
+        } else {
+          setShowPopup(null);
+        }
       } else {
         Alert.alert(t("error"), t("popup.failedToSubmitReview"));
       }
@@ -207,6 +230,11 @@ export default function Popup({
   };
 
   const handleComplete = () => {
+    if (type === "orderComplete") {
+      setShowPopup("review");
+      return;
+    }
+
     if (onCompleted) {
       onCompleted();
     } else {

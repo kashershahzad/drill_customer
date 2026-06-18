@@ -61,7 +61,8 @@ export default function ProviderCard({ order }: ProviderCardProps) {
   const isTrackDisabled =
     isOnTrackScreen ||
     order?.status === "completed" ||
-    order?.status === "started";
+    order?.status === "started" ||
+    order?.status === "arrived";
 
   const handleTrack = () => {
     if (isTrackDisabled) {
@@ -95,8 +96,8 @@ export default function ProviderCard({ order }: ProviderCardProps) {
           <Text style={styles.providerName}>
             {provider?.name || t("unknown")}
           </Text>
-          <Text style={styles.grayText}>{`⭐ ${provider?.rating || 0} (${
-            provider?.reviewscount || 0
+          <Text style={styles.grayText}>{`⭐ ${provider?.rating} (${
+            provider?.reviews
           })`}</Text>
           <Text style={styles.grayText}>{` ${t("provider")}`}</Text>
         </View>
@@ -139,14 +140,39 @@ export default function ProviderCard({ order }: ProviderCardProps) {
 }
 
 const styles = StyleSheet.create({
-  providerContainer: { padding: s(14), backgroundColor: Colors.gray400, borderRadius: ms(12), marginTop: vs(8) },
+  providerContainer: {
+    padding: s(14),
+    backgroundColor: Colors.gray400,
+    borderRadius: ms(12),
+    marginTop: vs(8),
+  },
   providerImage: { width: s(46), height: s(46), borderRadius: ms(23) },
   providerInfo: { marginLeft: s(14) },
-  buttonRow: { flexDirection: "row", gap: 6, marginTop: 8},
-  actionButton: { flex: 1, height: 36, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 8 },
+  buttonRow: { flexDirection: "row", gap: 6, marginTop: 8 },
+  actionButton: {
+    flex: 1,
+    height: 36,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
   actionButtonWhite: { backgroundColor: Colors.white },
-  providerName: { fontFamily: FONTS.bold, color: Colors.secondary, fontSize: ms(17), marginBottom: vs(4) },
+  providerName: {
+    fontFamily: FONTS.bold,
+    color: Colors.secondary,
+    fontSize: ms(17),
+    marginBottom: vs(4),
+  },
   grayText: { color: Colors.secondary, fontSize: ms(13) },
-  loadingContainer: { minHeight: vs(100), justifyContent: "center", alignItems: "center" },
-  loadingText: { marginTop: vs(10), color: Colors.secondary, fontSize: ms(13), fontFamily: FONTS.regular },
+  loadingContainer: {
+    minHeight: vs(100),
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: vs(10),
+    color: Colors.secondary,
+    fontSize: ms(13),
+    fontFamily: FONTS.regular,
+  },
 });
