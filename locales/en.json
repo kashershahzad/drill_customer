@@ -349,7 +349,8 @@
     "supportAgent": "Support Agent",
     "supportAgentAdded": "Support Agent Added",
     "providerNearby": "Provider is nearby! They should arrive soon.",
-    "paymentFailed": "Payment failed"
+    "paymentFailed": "Payment failed",
+    "cashPaymentAtService": "This order is cash on pay. Please pay your provider directly."
   },
   "popup": {
     "orderInfoNotFound": "Order information not found",

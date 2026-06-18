@@ -4,7 +4,7 @@ import Arrived from "@/assets/svgs/TrackButton.svg";
 import Profile from "@/assets/svgs/profile-circle.svg";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -42,6 +42,12 @@ const parseCoordinates = (
   return { latitude, longitude };
 };
 
+const normalizeStatus = (status?: string | null) =>
+  status?.toLowerCase().trim() || "";
+
+const POLL_INTERVAL_MS = 5000;
+const TERMINAL_ORDER_STATUSES = ["completed", "cancelled"];
+
 const MAP_FIT_PADDING = {
   top: 140,
   right: 80,
@@ -78,12 +84,10 @@ const getRegionForCoordinates = (points: MapCoordinate[]) => {
 
 export default function Track() {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<string>("OnTheWay");
   const slideAnim = useRef(new Animated.Value(800)).current;
   const [location, setLocation] = useState<LocationStateType | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isOrderLoaded, setIsOrderLoaded] = useState<boolean>(false);
   const [routeCoordinates, setRouteCoordinates] = useState<
     { latitude: number; longitude: number }[]
   >([]);
@@ -97,6 +101,7 @@ export default function Track() {
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(
     null,
   );
+  const orderPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasFittedMapRef = useRef(false);
   const GOOGLE_MAPS_API_KEY = "AIzaSyAQiilQ_i4LRPFyMhfLB5ZT3UGMTIxqL0Y";
 
@@ -169,32 +174,62 @@ export default function Track() {
     }
   };
 
-  const getOrderDetails = useCallback(async () => {
-    if (isOrderLoaded || !orderId) return;
+  const fetchOrderDetails = useCallback(
+    async (showLoading = false) => {
+      if (!orderId) return;
 
-    setIsLoading(true);
-    const formData = new FormData();
-    formData.append("type", "get_data");
-    formData.append("table_name", "orders");
-    formData.append("id", orderId);
-
-    try {
-      const response = await apiCall(formData);
-      if (response && response.data && response.data.length > 0) {
-        const orderData = response.data[0];
-        setOrder(orderData);
-        setStatus(orderData?.status);
-      } else {
-        setOrder(null);
+      if (showLoading) {
+        setIsLoading(true);
       }
-    } catch (error) {
-      console.error("Failed to fetch order details", error);
-      setOrder(null);
-    } finally {
-      setIsLoading(false);
-      setIsOrderLoaded(true); // Mark as loaded to prevent refetching
+
+      const formData = new FormData();
+      formData.append("type", "get_data");
+      formData.append("table_name", "orders");
+      formData.append("id", orderId);
+
+      try {
+        const response = await apiCall(formData);
+        if (response && response.data && response.data.length > 0) {
+          setOrder(response.data[0]);
+        } else {
+          setOrder(null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch order details", error);
+        if (showLoading) {
+          setOrder(null);
+        }
+      } finally {
+        if (showLoading) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [orderId],
+  );
+
+  const stopOrderPolling = useCallback(() => {
+    if (orderPollIntervalRef.current) {
+      clearInterval(orderPollIntervalRef.current);
+      orderPollIntervalRef.current = null;
     }
-  }, [orderId, isOrderLoaded]);
+  }, []);
+
+  const startOrderPolling = useCallback(() => {
+    stopOrderPolling();
+    orderPollIntervalRef.current = setInterval(() => {
+      fetchOrderDetails(false);
+    }, POLL_INTERVAL_MS);
+  }, [fetchOrderDetails, stopOrderPolling]);
+
+  const normalizedStatus = useMemo(
+    () => normalizeStatus(order?.status),
+    [order?.status],
+  );
+
+  const isOnTheWay = normalizedStatus === "on_the_way";
+  const isArrived =
+    normalizedStatus === "arrived" || normalizedStatus === "started";
 
   const customerLocation = useMemo((): MapCoordinate | null => {
     return (
@@ -259,11 +294,27 @@ export default function Track() {
     fitMapToBothMarkers();
   }, [fitMapToBothMarkers]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!orderId) return;
+
+      fetchOrderDetails(true);
+      startOrderPolling();
+
+      return () => {
+        stopOrderPolling();
+      };
+    }, [orderId, fetchOrderDetails, startOrderPolling, stopOrderPolling]),
+  );
+
   useEffect(() => {
-    if (orderId && !isOrderLoaded) {
-      getOrderDetails();
+    if (
+      normalizedStatus &&
+      TERMINAL_ORDER_STATUSES.includes(normalizedStatus)
+    ) {
+      stopOrderPolling();
     }
-  }, [orderId, getOrderDetails, isOrderLoaded]);
+  }, [normalizedStatus, stopOrderPolling]);
 
   useEffect(() => {
     hasFittedMapRef.current = false;
@@ -431,7 +482,7 @@ export default function Track() {
             {providerLocation && (
               <Marker
                 coordinate={providerLocation}
-                title={t("order.onTheWay")}
+                title={isArrived ? t("order.arrived") : t("order.onTheWay")}
                 anchor={{ x: 0.5, y: 0.5 }}
               >
                 <View style={styles.providerMarkerContainer}>
@@ -508,7 +559,7 @@ export default function Track() {
               <Text
                 style={[
                   styles.statusText,
-                  status === "OnTheWay" ? styles.activeStatusText : {},
+                  isOnTheWay && !isArrived ? styles.activeStatusText : {},
                 ]}
               >
                 {t("order.onTheWayStatus")}
@@ -517,7 +568,7 @@ export default function Track() {
             <View
               style={[
                 styles.line,
-                status === "Arrived" ? styles.line : styles.lineInactive,
+                isArrived ? styles.line : styles.lineInactive,
               ]}
             />
             <View style={styles.statusItem}>
@@ -525,7 +576,7 @@ export default function Track() {
               <Text
                 style={[
                   styles.statusText,
-                  status === "Arrived" ? styles.activeStatusText : {},
+                  isArrived ? styles.activeStatusText : {},
                 ]}
               >
                 {t("order.arrived")}

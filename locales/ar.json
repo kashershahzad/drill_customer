@@ -349,7 +349,8 @@
     "supportAgent": "وكيل الدعم",
     "supportAgentAdded": "تمت إضافة وكيل الدعم",
     "providerNearby": "مقدم الخدمة قريب! يجب أن يصل قريباً.",
-    "paymentFailed": "فشل الدفع"
+    "paymentFailed": "فشل الدفع",
+    "cashPaymentAtService": "هذا الطلب دفع نقداً. يرجى الدفع لمقدم الخدمة مباشرة."
   },
   "popup": {
     "orderInfoNotFound": "لم يتم العثور على معلومات الطلب",

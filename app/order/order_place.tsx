@@ -488,9 +488,19 @@ const OrderPlace: React.FC = () => {
     };
   }, []);
 
+  const isCashPayment = useCallback(() => {
+    return (order?.payment_method || "").toLowerCase().trim() === "cash";
+  }, [order?.payment_method]);
+
   const processTapPayment = useCallback(
     async (tipAmountStr: string) => {
       if (isPayingNow || !orderId) return;
+
+      if (isCashPayment()) {
+        console.log("[Pay Now] Cash order — skipping Tap payment");
+        return;
+      }
+
       setIsPayingNow(true);
 
       try {
@@ -523,11 +533,15 @@ const OrderPlace: React.FC = () => {
         setIsPayingNow(false);
       }
     },
-    [isPayingNow, order?.amount, orderId, showToast, t],
+    [isPayingNow, isCashPayment, order?.amount, orderId, showToast, t],
   );
 
   const handlePay = () => {
     if (isPayingNow || !orderId) return;
+    if (isCashPayment()) {
+      showToast(t("order.cashPaymentAtService"), "info");
+      return;
+    }
     setPopupType("tipup");
   };
 

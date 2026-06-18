@@ -1,8 +1,10 @@
 import Tick from "@/assets/svgs/doubletick.svg";
 import Button from "@/components/button";
-import { router } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
+import { router, useNavigation } from "expo-router";
+import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { StyleSheet, Text, View } from "react-native";
+import { BackHandler, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
@@ -10,6 +12,46 @@ import { ms, s, vs } from "~/utils/responsive";
 
 export default function ConfirmedBooking() {
   const { t } = useTranslation();
+  const navigation = useNavigation();
+  const isNavigatingRef = useRef(false);
+
+  const goToOrders = useCallback(() => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    router.replace("/(tabs)/orders");
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      isNavigatingRef.current = false;
+
+      const onBackPress = () => {
+        goToOrders();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress,
+      );
+
+      return () => subscription.remove();
+    }, [goToOrders]),
+  );
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (isNavigatingRef.current) return;
+
+      const actionType = e.data.action.type;
+      if (actionType === "GO_BACK" || actionType === "POP") {
+        e.preventDefault();
+        goToOrders();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, goToOrders]);
 
   const handleNext = () => {
     router.push("/order/order_place");
@@ -19,7 +61,7 @@ export default function ConfirmedBooking() {
     <SafeAreaView style={styles.container}>
       {/* Top Section */}
       <View style={styles.imageContainer}>
-        <Tick style={{ marginBottom: vs(30) }}/>
+        <Tick style={{ marginBottom: vs(30) }} />
         <View style={styles.textContainer}>
           <Text style={styles.heading}>{t("booking.heading")}</Text>
           <Text style={styles.paragraph}>{t("booking.paragraph")}</Text>
@@ -38,12 +80,35 @@ export default function ConfirmedBooking() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "space-between", paddingHorizontal: s(16), paddingVertical: vs(16), backgroundColor: Colors.white },
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+    paddingHorizontal: s(16),
+    paddingVertical: vs(16),
+    backgroundColor: Colors.white,
+  },
   imageContainer: { alignItems: "center", paddingTop: vs(100) },
   textContainer: { alignItems: "center", paddingHorizontal: s(40) },
-  heading: { fontSize: ms(28), fontFamily: FONTS.bold, marginBottom: vs(8), color: Colors.secondary, textAlign: "center" },
-  paragraph: { fontSize: ms(15), fontFamily: FONTS.regular, textAlign: "center", color: Colors.secondary300, marginBottom: vs(24) },
-  noteContainer: { backgroundColor: Colors.primary200, padding: s(18), borderRadius: ms(20), gap: vs(14) },
+  heading: {
+    fontSize: ms(28),
+    fontFamily: FONTS.bold,
+    marginBottom: vs(8),
+    color: Colors.secondary,
+    textAlign: "center",
+  },
+  paragraph: {
+    fontSize: ms(15),
+    fontFamily: FONTS.regular,
+    textAlign: "center",
+    color: Colors.secondary300,
+    marginBottom: vs(24),
+  },
+  noteContainer: {
+    backgroundColor: Colors.primary200,
+    padding: s(18),
+    borderRadius: ms(20),
+    gap: vs(14),
+  },
   noteText: { color: Colors.secondary, fontSize: ms(14) },
   boldText: { fontFamily: FONTS.bold, textAlign: "center" },
 });
