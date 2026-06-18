@@ -9,13 +9,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import DashedSeparator from "~/components/dashed_seprator";
 import Header from "~/components/header";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
 import { getLocalizedText } from "~/utils/locale";
+import { getTabBarContentPadding } from "~/utils/tabBar";
 import { ms, s, vs } from "~/utils/responsive";
 
 interface Package {
@@ -29,6 +30,8 @@ interface Package {
 
 export default function Packages() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const tabBarPadding = getTabBarContentPadding(insets.bottom);
   const [packages, setPackages] = useState<Package[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -143,7 +146,13 @@ export default function Packages() {
             </Text>
           </View>
         ) : (
-          <ScrollView>{packages.map(renderPackageCard)}</ScrollView>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={{ paddingBottom: tabBarPadding }}
+            showsVerticalScrollIndicator={false}
+          >
+            {packages.map(renderPackageCard)}
+          </ScrollView>
         )}
       </View>
     </SafeAreaView>
@@ -157,6 +166,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: s(16),
     paddingTop: vs(8),
     backgroundColor: Colors.white,
+  },
+  scrollView: {
+    flex: 1,
   },
   loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   errorContainer: {

@@ -27,10 +27,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { FONTS } from "~/constants/Fonts";
 import { useAuth } from "~/contexts/AuthContext";
 import { apiCall } from "~/utils/api";
+import { getTabBarContentPadding } from "~/utils/tabBar";
 import { ms, s, vs } from "~/utils/responsive";
 
 type User = {
@@ -59,6 +60,8 @@ export default function Account() {
   const { t } = useTranslation();
   const router = useRouter();
   const { isLoggedIn, logout: authLogout } = useAuth();
+  const insets = useSafeAreaInsets();
+  const tabBarPadding = getTabBarContentPadding(insets.bottom);
   const [user, setUserState] = useState<User>({
     id: "",
     name: "",
@@ -270,7 +273,10 @@ export default function Account() {
       <SafeAreaView style={styles.container}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.guestScrollContent}
+          contentContainerStyle={[
+            styles.guestScrollContent,
+            { paddingBottom: tabBarPadding },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <Header title={t("account.title")} homeScreen={false} />
@@ -291,11 +297,14 @@ export default function Account() {
   const isValidImage = user.image && /\.(jpg|jpeg|png|webp)$/i.test(user.image);
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollViewContent}
-      >
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.scrollViewContent,
+            { paddingBottom: tabBarPadding },
+          ]}
+        >
         <Header title={t("account.title")} homeScreen={false} />
 
         {/* Profile Section */}
@@ -396,11 +405,8 @@ const styles = StyleSheet.create({
     paddingTop: vs(8),
     flex: 1,
   },
-  scrollViewContent: {
-    paddingBottom: vs(120),
-  },
+  scrollViewContent: {},
   guestScrollContent: {
-    paddingBottom: vs(120),
     flexGrow: 1,
   },
   guestContainer: {

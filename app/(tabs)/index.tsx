@@ -7,15 +7,18 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BackHandler, ScrollView, StyleSheet } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import PopularServices from "~/components/popular_services";
 import { useAuth } from "~/contexts/AuthContext";
 import { Colors } from "~/constants/Colors";
+import { getTabBarContentPadding } from "~/utils/tabBar";
 import { s, vs } from "~/utils/responsive";
 
 export default function Home() {
   const { t } = useTranslation();
   const { isLoggedIn } = useAuth();
+  const insets = useSafeAreaInsets();
+  const tabBarPadding = getTabBarContentPadding(insets.bottom);
   const [userName, setUserName] = useState<string | null>(null);
 
   useFocusEffect(
@@ -48,7 +51,10 @@ export default function Home() {
     <SafeAreaView style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: tabBarPadding },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -73,6 +79,6 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: s(14),
-    paddingBottom: vs(120),
+    flexGrow: 1,
   },
 });

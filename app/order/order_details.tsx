@@ -29,6 +29,7 @@ export default function OrderDetails({ order }: OrderDetailsProps) {
   return (
     <ScrollView
       style={styles.contentContainer}
+      contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
     >
       <ServiceDetailsCard order={order} />
@@ -73,6 +74,7 @@ export default function OrderDetails({ order }: OrderDetailsProps) {
 
 const styles = StyleSheet.create({
   contentContainer: { flex: 1 },
+  scrollContent: { paddingBottom: vs(24) },
   orderHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   orderDetailsContainer: { backgroundColor: Colors.primary300, marginTop: vs(20), borderRadius: ms(12), paddingHorizontal: s(16), paddingVertical: s(16), marginBottom: vs(20) },
   sectionTitle: { fontSize: ms(17), fontFamily: FONTS.semiBold, color: Colors.secondary },

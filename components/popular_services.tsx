@@ -91,7 +91,7 @@ export default function PopularServices() {
   }, []);
 
   return (
-    <View>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerContainer}>
         <Text style={styles.headerText}>{t("popularservices")}</Text>
@@ -137,6 +137,9 @@ export default function PopularServices() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    marginBottom: vs(8),
+  },
   headerContainer: {
     flexDirection: "row",
     justifyContent: "space-between",

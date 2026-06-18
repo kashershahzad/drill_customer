@@ -15,10 +15,11 @@ import {
   View,
 } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { FONTS } from "~/constants/Fonts";
 import { useAuth } from "~/contexts/AuthContext";
 import { apiCall } from "~/utils/api";
+import { getTabBarContentPadding } from "~/utils/tabBar";
 import { ms, s, vs } from "~/utils/responsive";
 
 // Order type definition
@@ -52,6 +53,8 @@ export type Order = {
 export default function Orders() {
   const { t } = useTranslation();
   const { isLoggedIn } = useAuth();
+  const insets = useSafeAreaInsets();
+  const tabBarPadding = getTabBarContentPadding(insets.bottom);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -157,8 +160,10 @@ export default function Orders() {
         </View>
 
         <ScrollView
+          style={styles.scrollView}
           contentContainerStyle={[
             styles.scrollContainer,
+            { paddingBottom: tabBarPadding },
             open && { paddingTop: 120 },
           ]}
           showsVerticalScrollIndicator={false}
@@ -199,8 +204,11 @@ const styles = StyleSheet.create({
     paddingTop: vs(12),
     flex: 1,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContainer: {
-    paddingBottom: vs(120),
+    flexGrow: 1,
   },
   dropdownContainer: {
     marginVertical: vs(14),
