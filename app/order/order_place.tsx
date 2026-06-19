@@ -56,6 +56,7 @@ const OrderPlace: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>(
     tab ? String(tab) : "Details",
   );
+  const [chatSupportSignal, setChatSupportSignal] = useState(0);
   const [popupType, setPopupType] = useState<PopupType | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [detailsScreen, setDetailsScreen] = useState(true);
@@ -78,6 +79,17 @@ const OrderPlace: React.FC = () => {
 
   const normalizeStatus = (status?: string | null) =>
     status?.toLowerCase().trim() || "";
+
+  useEffect(() => {
+    if (tab) {
+      setActiveTab(String(tab));
+    }
+  }, [tab]);
+
+  const handleSupportRequested = useCallback(async () => {
+    setActiveTab("Chat");
+    setChatSupportSignal((prev) => prev + 1);
+  }, []);
 
   const isPastArrivedPhase = (status: string) =>
     ["started", "in_progress", "completed", "time_up"].includes(status);
@@ -697,6 +709,7 @@ const OrderPlace: React.FC = () => {
           icon={true}
           support={true}
           backAddress={"/(tabs)/orders"}
+          onSupportRequested={handleSupportRequested}
         />
         <View style={styles.tabContainer}>
           <TouchableOpacity
@@ -733,7 +746,7 @@ const OrderPlace: React.FC = () => {
         {activeTab === "Details" ? (
           <OrderDetails order={order} />
         ) : (
-          <ChatScreen />
+          <ChatScreen supportRefreshSignal={chatSupportSignal} />
         )}
       </View>
 

@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -115,7 +116,13 @@ interface Message {
   senderImage?: string;
 }
 
-export default function ChatScreen() {
+type ChatScreenProps = {
+  supportRefreshSignal?: number;
+};
+
+export default function ChatScreen({
+  supportRefreshSignal = 0,
+}: ChatScreenProps) {
   const { t } = useTranslation();
   const toId = "";
 
@@ -136,7 +143,43 @@ export default function ChatScreen() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const isSendingRef = useRef<boolean>(false);
+  const keyboardVisibleRef = useRef(false);
+  const scrollPendingRef = useRef(false);
   const IMAGE_BASE_URL = "https://7tracking.com/saudiservices/images/";
+
+  const scheduleScrollToEnd = useCallback((animated = true) => {
+    if (keyboardVisibleRef.current) {
+      scrollPendingRef.current = true;
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, () => {
+      keyboardVisibleRef.current = true;
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      keyboardVisibleRef.current = false;
+      if (scrollPendingRef.current) {
+        scrollPendingRef.current = false;
+        scheduleScrollToEnd(true);
+      }
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [scheduleScrollToEnd]);
 
   useFocusEffect(
     useCallback(() => {
@@ -204,6 +247,7 @@ export default function ChatScreen() {
     orderIdParam: string,
     userIdParam: string,
     showLoading = true,
+    showSupportMessage?: boolean,
   ) => {
     if (showLoading) {
       setIsLoading(true);
@@ -275,7 +319,9 @@ export default function ChatScreen() {
 
         // Add support agent added system message if support is required
         let finalMessages = formattedMessages.reverse();
-        if (supportRequired && hasShownSupportMessage) {
+        const shouldShowSupportMessage =
+          showSupportMessage ?? (supportRequired && hasShownSupportMessage);
+        if (shouldShowSupportMessage) {
           const supportMessageExists = finalMessages.some(
             (msg: Message) =>
               msg.sender === "system" &&
@@ -490,7 +536,30 @@ export default function ChatScreen() {
     }
   };
 
+  useEffect(() => {
+    if (!supportRefreshSignal || !orderId || !userId) return;
+
+    let cancelled = false;
+
+    const refreshAfterSupport = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (cancelled) return;
+
+      setHasShownSupportMessage(true);
+      setSupportRequired(true);
+      await fetchOrderDetails(orderId);
+      await fetchChatHistory(orderId, userId, false, true);
+    };
+
+    refreshAfterSupport();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supportRefreshSignal, orderId, userId]);
+
   const openMediaPicker = () => {
+    Keyboard.dismiss();
     setIsMediaPickerVisible(true);
   };
 
@@ -500,22 +569,20 @@ export default function ChatScreen() {
   };
 
   useEffect(() => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  }, [messages]);
+    scheduleScrollToEnd(true);
+  }, [messages, scheduleScrollToEnd]);
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 18}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
     >
       <View style={styles.chatContainer}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           ref={scrollViewRef}
-          onContentSizeChange={() =>
-            scrollViewRef.current?.scrollToEnd({ animated: true })
-          }
+          onContentSizeChange={() => scheduleScrollToEnd(true)}
           contentContainerStyle={styles.scrollViewContent}
           keyboardShouldPersistTaps="handled"
         >
@@ -632,7 +699,12 @@ export default function ChatScreen() {
                   </TouchableOpacity>
                 </View>
               )}
-              <TouchableOpacity onPress={() => setIsEmojiPickerVisible(true)}>
+              <TouchableOpacity
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setIsEmojiPickerVisible(true);
+                }}
+              >
                 <Smile width={INPUT_ICON_SIZE} height={INPUT_ICON_SIZE} />
               </TouchableOpacity>
             </View>

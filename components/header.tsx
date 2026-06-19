@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
+  Keyboard,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,6 +27,7 @@ type HeaderProps = {
   backBtn?: boolean;
   onpress?: any;
   backAddress?: any;
+  onSupportRequested?: () => void | Promise<void>;
 };
 
 export default function Header({
@@ -36,6 +38,7 @@ export default function Header({
   support,
   backBtn,
   backAddress,
+  onSupportRequested,
 }: HeaderProps) {
   const navigation = useNavigation();
   const { t } = useTranslation();
@@ -57,6 +60,8 @@ export default function Header({
     router.replace("/(tabs)/orders");
   };
   const handleSupport = async () => {
+    Keyboard.dismiss();
+
     try {
       const orderId = await AsyncStorage.getItem("order_id");
       if (!orderId) {
@@ -70,7 +75,14 @@ export default function Header({
       formData.append("support_required", "1");
       const response = await apiCall(formData);
       if (response && response.result) {
-        router.push({ pathname: "/order/order_place", params: { tab: "Chat" } });
+        if (onSupportRequested) {
+          await onSupportRequested();
+        } else {
+          router.push({
+            pathname: "/order/order_place",
+            params: { tab: "Chat" },
+          });
+        }
       } else {
         Alert.alert(t("error"), t("header.failedToSubmitSupport"));
       }
