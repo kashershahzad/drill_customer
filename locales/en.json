@@ -375,6 +375,7 @@
     "orderCompleted": "Order Completed",
     "orderCompletedDescription": "Thanks! for sharing your experience and valuable feedback.",
     "rateExperience": "Rate Your Experience",
+    "addRating": "Add Rating",
     "howWasService": "How was your service?",
     "youGaveStars": "You gave {{count}} {{stars}} to the service provider.",
     "star": "star",

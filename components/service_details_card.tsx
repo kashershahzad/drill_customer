@@ -1,8 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { formatAppDate, formatAppTime } from "~/utils/locale";
+import { ms, s, vs } from "~/utils/responsive";
 import { Colors } from "../constants/Colors";
 import DashedSeprator from "./dashed_seprator";
 
@@ -14,12 +14,14 @@ type ServiceDetailsCardProps = {
   order: Order;
   orderScreen?: boolean;
   onPress?: () => void;
+  onAddRating?: () => void;
   disabled?: boolean;
 };
 
 export default function ServiceDetailsCard({
   order,
   onPress,
+  onAddRating,
   disabled,
 }: ServiceDetailsCardProps) {
   const { t } = useTranslation();
@@ -72,7 +74,8 @@ export default function ServiceDetailsCard({
   const isCancelled = order.status?.toLowerCase() === "cancelled";
   const isDisabled = isCancelled || disabled;
   const isCompleted = order.status?.toLowerCase() === "completed";
-  const showRating = isCompleted && Number(order.rating) > 0;
+  const hasRating = Number(order.rating) > 0;
+  const showRatingSection = isCompleted;
   const showTip =
     isCompleted && (order.tip_status === "1" || order.tip_status === 1);
   const tipAmount = order.tip_amount ?? order.tip ?? "0";
@@ -80,7 +83,12 @@ export default function ServiceDetailsCard({
   // Get the status style for the current order
   const statusStyle = getStatusStyle(order.status);
   return (
-    <TouchableOpacity onPress={isDisabled ? undefined : onPress} disabled={isDisabled} activeOpacity={isDisabled ? 1 : 0.7} style={[styles.card, isDisabled && styles.cardDisabled]}>
+    <TouchableOpacity
+      onPress={isDisabled ? undefined : onPress}
+      disabled={isDisabled}
+      activeOpacity={isDisabled ? 1 : 0.7}
+      style={[styles.card, isDisabled && styles.cardDisabled]}
+    >
       {/* Order Top Section */}
       <View style={styles.orderTopSection}>
         <Image
@@ -142,7 +150,7 @@ export default function ServiceDetailsCard({
               <Text style={styles.value}>
                 {formatScheduleDateTime(
                   order.schedule_date,
-                  order.schedule_time
+                  order.schedule_time,
                 )}
               </Text>
             </View>
@@ -190,15 +198,32 @@ export default function ServiceDetailsCard({
             {order?.paymentStatus || order?.payment_status}
           </Text>
         </View>
-        {showRating && (
+        {showRatingSection && (
           <>
             <DashedSeprator />
             <View style={styles.detailsRow}>
               <Text style={styles.label}>{t("popup.rateExperience")}</Text>
-              <View style={styles.ratingContainer}>
-                <Text style={styles.starIcon}>★</Text>
-                <Text style={styles.value}>{order.rating}</Text>
-              </View>
+              {hasRating ? (
+                <View style={styles.ratingContainer}>
+                  <Text style={styles.starIcon}>★</Text>
+                  <Text style={styles.value}>{order.rating}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={onAddRating}
+                  disabled={!onAddRating}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text
+                    style={[
+                      styles.addRatingText,
+                      !onAddRating && styles.addRatingTextDisabled,
+                    ]}
+                  >
+                    {t("popup.addRating")}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </>
         )}
@@ -235,22 +260,90 @@ const styles = StyleSheet.create({
     opacity: 0.55,
   },
   orderTopSection: { flexDirection: "row", alignItems: "center", gap: s(14) },
-  image: { height: s(60), width: s(60), borderRadius: ms(8), backgroundColor: Colors.white, padding: s(10) },
+  image: {
+    height: s(60),
+    width: s(60),
+    borderRadius: ms(8),
+    backgroundColor: Colors.white,
+    padding: s(10),
+  },
   orderInfo: { flex: 1, gap: vs(6) },
-  orderHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  title: { fontSize: ms(15), fontFamily: FONTS.bold, color: Colors.secondary, flex: 1, textTransform: "capitalize" },
-  statusContainer: { borderRadius: ms(8), paddingHorizontal: s(8), paddingVertical: vs(4) },
-  statusText: { fontSize: ms(13), fontFamily: FONTS.semiBold, textTransform: "capitalize" },
-  orderId: { fontSize: ms(13), fontFamily: FONTS.regular, color: Colors.secondary300 },
+  orderHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  title: {
+    fontSize: ms(15),
+    fontFamily: FONTS.bold,
+    color: Colors.secondary,
+    flex: 1,
+    textTransform: "capitalize",
+  },
+  statusContainer: {
+    borderRadius: ms(8),
+    paddingHorizontal: s(8),
+    paddingVertical: vs(4),
+  },
+  statusText: {
+    fontSize: ms(13),
+    fontFamily: FONTS.semiBold,
+    textTransform: "capitalize",
+  },
+  orderId: {
+    fontSize: ms(13),
+    fontFamily: FONTS.regular,
+    color: Colors.secondary300,
+  },
   orderIdValue: { fontFamily: FONTS.semiBold },
-  amount: { fontSize: ms(13), color: Colors.secondary, fontFamily: FONTS.semiBold },
+  amount: {
+    fontSize: ms(13),
+    color: Colors.secondary,
+    fontFamily: FONTS.semiBold,
+  },
   discount: { color: Colors.success },
-  detailsContainer: { backgroundColor: Colors.white, paddingHorizontal: s(16), paddingVertical: s(14), borderRadius: ms(20), marginTop: vs(10) },
-  detailsRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginVertical: vs(2) },
-  label: { color: Colors.secondary300, fontSize: ms(13), fontFamily: FONTS.regular, flexShrink: 0 },
-  value: { color: Colors.secondary, fontSize: ms(13), fontFamily: FONTS.bold, textTransform: "capitalize" },
-  paymentStatus: { color: Colors.success, fontSize: ms(13), fontFamily: FONTS.bold, flexShrink: 1, textAlign: "right", marginLeft: s(8) },
+  detailsContainer: {
+    backgroundColor: Colors.white,
+    paddingHorizontal: s(16),
+    paddingVertical: s(14),
+    borderRadius: ms(20),
+    marginTop: vs(10),
+  },
+  detailsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: vs(2),
+  },
+  label: {
+    color: Colors.secondary300,
+    fontSize: ms(13),
+    fontFamily: FONTS.regular,
+    flexShrink: 0,
+  },
+  value: {
+    color: Colors.secondary,
+    fontSize: ms(13),
+    fontFamily: FONTS.bold,
+    textTransform: "capitalize",
+  },
+  paymentStatus: {
+    color: Colors.success,
+    fontSize: ms(13),
+    fontFamily: FONTS.bold,
+    flexShrink: 1,
+    textAlign: "right",
+    marginLeft: s(8),
+  },
   ratingContainer: { flexDirection: "row", alignItems: "center", gap: s(4) },
   starIcon: { color: "#FFD700", fontSize: ms(15), fontFamily: FONTS.semiBold },
+  addRatingText: {
+    color: Colors.primary,
+    fontSize: ms(13),
+    fontFamily: FONTS.semiBold,
+  },
+  addRatingTextDisabled: {
+    color: Colors.secondary300,
+  },
   tip: { color: Colors.success, fontSize: ms(13), fontFamily: FONTS.semiBold },
 });

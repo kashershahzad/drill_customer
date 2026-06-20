@@ -29,9 +29,7 @@ import { ms, s, vs } from "~/utils/responsive";
 
 type CountryCode = { key: number; label: string; value: string };
 
-const countryCodes: CountryCode[] = [
-  { key: 1, label: "", value: "+966" },
-];
+const countryCodes: CountryCode[] = [{ key: 1, label: "", value: "+966" }];
 
 const PENDING_BOOKING_KEY = "pending_booking";
 

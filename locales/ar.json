@@ -375,6 +375,7 @@
     "orderCompleted": "اكتمل الطلب",
     "orderCompletedDescription": "شكراً لمشاركة تجربتك وملاحظاتك القيمة.",
     "rateExperience": "قيم تجربتك",
+    "addRating": "أضف التقييم",
     "howWasService": "كيف كانت خدمتك؟",
     "youGaveStars": "لقد أعطيت {{count}} {{stars}} لمقدم الخدمة.",
     "star": "نجمة",

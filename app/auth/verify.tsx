@@ -2,7 +2,7 @@ import Arrow from "@/assets/svgs/arrowLeft.svg";
 import Button from "@/components/button";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { OtpInput } from "react-native-otp-entry";
@@ -19,6 +19,8 @@ export default function Verify() {
   const [code, setCode] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const isVerifyingRef = useRef(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -51,38 +53,59 @@ export default function Verify() {
     if (error) setError("");
   };
 
-  const handleVerify = async () => {
-    const userId = await AsyncStorage.getItem("user_id");
-    if (!userId) {
-      setError(t("verify.userNotFound"));
-      return;
-    }
+  const handleVerify = useCallback(
+    async (otpCode?: string) => {
+      if (isVerifyingRef.current) return;
 
-    if (code.length !== 4) {
-      setError(t("verify.invalidCode"));
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append("type", "verify_otp");
-      formData.append("code", code);
-      formData.append("user_id", userId);
-      const response = await apiCall(formData);
-
-      if (response.result) {
-        await AsyncStorage.setItem("user_num_id", response?.user?.id);
-        await AsyncStorage.setItem("user_name", response?.user?.name);
-        registerDeviceWithBackend(userId);
-        setTimeout(() => router.push("/auth/verified"), 500);
-      } else {
-        setError(t("verify.verificationFailed"));
+      const userId = await AsyncStorage.getItem("user_id");
+      if (!userId) {
+        setError(t("verify.userNotFound"));
+        return;
       }
-    } catch (error) {
-      console.error("Verification Error:", error);
-      setError(t("verify.errorFallback"));
-    }
-  };
+
+      const verificationCode = otpCode ?? code;
+
+      if (verificationCode.length !== 4) {
+        setError(t("verify.invalidCode"));
+        return;
+      }
+
+      isVerifyingRef.current = true;
+      setIsVerifying(true);
+
+      try {
+        const formData = new FormData();
+        formData.append("type", "verify_otp");
+        formData.append("code", verificationCode);
+        formData.append("user_id", userId);
+        const response = await apiCall(formData);
+
+        if (response.result) {
+          await AsyncStorage.setItem("user_num_id", response?.user?.id);
+          await AsyncStorage.setItem("user_name", response?.user?.name);
+          registerDeviceWithBackend(userId);
+          setTimeout(() => router.push("/auth/verified"), 500);
+        } else {
+          setError(t("verify.verificationFailed"));
+        }
+      } catch (error) {
+        console.error("Verification Error:", error);
+        setError(t("verify.errorFallback"));
+      } finally {
+        isVerifyingRef.current = false;
+        setIsVerifying(false);
+      }
+    },
+    [code, t],
+  );
+
+  const handleOtpFilled = useCallback(
+    (text: string) => {
+      setCode(text);
+      void handleVerify(text);
+    },
+    [handleVerify],
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -103,7 +126,9 @@ export default function Verify() {
         <OtpInput
           numberOfDigits={4}
           onTextChange={handleChangeText}
+          onFilled={handleOtpFilled}
           focusColor={Colors.primary}
+          disabled={isVerifying}
           theme={{
             containerStyle: styles.otpInputs,
             pinCodeContainerStyle: error
@@ -130,7 +155,11 @@ export default function Verify() {
       </View>
 
       {/* Verify Button */}
-      <Button title={t("verify.button")} onPress={handleVerify} />
+      <Button
+        title={isVerifying ? `${t("verify.button")}...` : t("verify.button")}
+        onPress={() => handleVerify()}
+        disabled={isVerifying}
+      />
     </SafeAreaView>
   );
 }

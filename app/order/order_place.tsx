@@ -662,6 +662,23 @@ const OrderPlace: React.FC = () => {
     }
   };
 
+  const handleReviewSubmitted = async () => {
+    if (order?.status?.toLowerCase() === "completed") {
+      setPopupType(null);
+      if (orderId) {
+        const parsedOrderId = parseStoredOrderId(orderId) ?? orderId;
+        await refreshOrderDetails(parsedOrderId);
+      }
+      return;
+    }
+
+    await handleOrderCompleted();
+  };
+
+  const handleAddRating = () => {
+    setPopupType("review");
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -744,7 +761,15 @@ const OrderPlace: React.FC = () => {
           </TouchableOpacity>
         </View>
         {activeTab === "Details" ? (
-          <OrderDetails order={order} />
+          <OrderDetails
+            order={order}
+            onAddRating={
+              order.status?.toLowerCase() === "completed" &&
+              Number(order.rating) <= 0
+                ? handleAddRating
+                : undefined
+            }
+          />
         ) : (
           <ChatScreen supportRefreshSignal={chatSupportSignal} />
         )}
@@ -851,7 +876,7 @@ const OrderPlace: React.FC = () => {
                 type={popupType}
                 setShowPopup={setPopupType}
                 orderId={orderId || ""}
-                onCompleted={handleOrderCompleted}
+                onCompleted={handleReviewSubmitted}
                 onCompleteToReview={
                   manualCompletionFlow ? handleCompleteToReview : undefined
                 }

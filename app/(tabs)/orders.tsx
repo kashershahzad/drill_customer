@@ -9,18 +9,24 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import DropDownPicker from "react-native-dropdown-picker";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import Popup from "~/components/popup";
 import { FONTS } from "~/constants/Fonts";
 import { useAuth } from "~/contexts/AuthContext";
 import { apiCall } from "~/utils/api";
-import { getTabBarContentPadding } from "~/utils/tabBar";
 import { ms, s, vs } from "~/utils/responsive";
+import { getTabBarContentPadding } from "~/utils/tabBar";
 
 // Order type definition
 export type Order = {
@@ -57,6 +63,8 @@ export default function Orders() {
   const tabBarPadding = getTabBarContentPadding(insets.bottom);
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
+  const [showRatingPopup, setShowRatingPopup] = useState(false);
 
   // Dropdown state
   const [open, setOpen] = useState(false);
@@ -102,12 +110,29 @@ export default function Orders() {
 
   const handleOrderScreen = (order: Order) => {
     if (order.status?.toLowerCase() === "cancelled") {
-      return; // or showToast("This order was cancelled")
+      return;
     }
-  
+
     AsyncStorage.setItem("order_id", order.id).then(() => {
       router.push("/order/order_place");
     });
+  };
+
+  const handleAddRating = async (order: Order) => {
+    await AsyncStorage.setItem("order_id", order.id);
+    setRatingOrderId(order.id);
+    setShowRatingPopup(true);
+  };
+
+  const handleRatingSubmitted = async () => {
+    setShowRatingPopup(false);
+    setRatingOrderId(null);
+    await fetchOrders();
+  };
+
+  const closeRatingPopup = () => {
+    setShowRatingPopup(false);
+    setRatingOrderId(null);
   };
 
   // Filter orders based on selected status
@@ -180,6 +205,12 @@ export default function Orders() {
                   order={order}
                   orderScreen={true}
                   onPress={() => handleOrderScreen(order)}
+                  onAddRating={
+                    order.status?.toLowerCase() === "completed" &&
+                    Number(order.rating) <= 0
+                      ? () => handleAddRating(order)
+                      : undefined
+                  }
                 />
               ))
             ) : (
@@ -190,6 +221,29 @@ export default function Orders() {
           </View>
         </ScrollView>
       </View>
+
+      {showRatingPopup && ratingOrderId && (
+        <Modal transparent visible={showRatingPopup} animationType="slide">
+          <View style={styles.overlay}>
+            <TouchableOpacity
+              style={styles.overlayBackground}
+              onPress={closeRatingPopup}
+            />
+            <View style={styles.popupContainer}>
+              <Popup
+                type="review"
+                setShowPopup={(value) => {
+                  if (value === null) {
+                    closeRatingPopup();
+                  }
+                }}
+                orderId={ratingOrderId}
+                onCompleted={handleRatingSubmitted}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -263,5 +317,18 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     textAlign: "center",
     marginBottom: vs(24),
+  },
+  overlay: { flex: 1, justifyContent: "flex-end" },
+  overlayBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  popupContainer: {
+    backgroundColor: Colors.white,
+    width: "100%",
+    borderTopLeftRadius: ms(20),
+    borderTopRightRadius: ms(20),
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
