@@ -349,6 +349,7 @@
     "supportAgent": "Support Agent",
     "supportAgentAdded": "Support Agent Added",
     "providerNearby": "Provider is nearby! They should arrive soon.",
+    "paymentSuccess": "Payment successful",
     "paymentFailed": "Payment failed",
     "cashPaymentAtService": "This order is cash on pay. Please pay your provider directly."
   },

@@ -27,7 +27,8 @@ import {
   setupNotificationListeners,
 } from "~/utils/notification";
 import { ms, s, vs } from "~/utils/responsive";
-import { createTapCharge } from "~/utils/tapPayment";
+// import { createTapCharge } from "~/utils/tapPayment";
+import { startTapPayment } from "~/utils/tapPayment";
 import ChatScreen from "./chat_screen";
 import OrderDetails from "./order_details";
 
@@ -223,6 +224,7 @@ const OrderPlace: React.FC = () => {
 
     try {
       const response = await apiCall(formData);
+      // console.log("response", response);
 
       if (response && response.data && response.data.length > 0) {
         applyOrderUpdate(response.data[0]);
@@ -520,7 +522,7 @@ const OrderPlace: React.FC = () => {
           ? JSON.parse(orderId)
           : orderId;
         const amount = parseFloat(order?.amount || "0");
-        const tipAmount = parseFloat(tipAmountStr || "0") || 0;
+        const tipAmount = parseFloat(tipAmountStr || "0");
 
         console.log(
           "[Pay Now] Starting Tap payment for order:",
@@ -531,13 +533,28 @@ const OrderPlace: React.FC = () => {
             total: amount + tipAmount,
           },
         );
-        const response = await createTapCharge(
-          amount,
-          "SAR",
-          parsedOrderId,
-          tipAmount,
-        );
-        console.log("[Pay Now] Tap payment response:", response);
+        // const response = await createTapCharge(
+        //   amount,
+        //   "SAR",
+        //   parsedOrderId,
+        //   tipAmount,
+        // );
+        await new Promise<void>((resolve, reject) => {
+          startTapPayment({
+            orderId: parsedOrderId,
+            amount,
+            tipAmount,
+            onStarted: () => setIsPayingNow(false),
+            onSuccess: async () => {
+              showToast(t("order.paymentSuccess"), "success");
+              await refreshOrderDetails(String(parsedOrderId));
+              resolve();
+            },
+            onCancelled: () => resolve(),
+            onError: (message) => reject(new Error(message)),
+          });
+        });
+        // console.log("[Pay Now] Tap payment response:", response);
       } catch (error) {
         console.error("[Pay Now] Error:", error);
         showToast(t("order.paymentFailed"), "error");
@@ -545,7 +562,7 @@ const OrderPlace: React.FC = () => {
         setIsPayingNow(false);
       }
     },
-    [isPayingNow, isCashPayment, order?.amount, orderId, showToast, t],
+    [isPayingNow, isCashPayment, order?.amount, orderId, showToast, t, refreshOrderDetails],
   );
 
   const handlePay = () => {

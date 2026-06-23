@@ -25,10 +25,11 @@ import { getInputFontSize, inputFieldStyles } from "~/components/inputfield";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
-import { formatAppDate, formatAppTime } from "~/utils/locale";
 import { BOOKING_PAY_LATER_KEY } from "~/utils/booking";
+import { formatAppDate, formatAppTime } from "~/utils/locale";
 import { ms, s, vs } from "~/utils/responsive";
-import { createTapCharge } from "~/utils/tapPayment";
+// import { createTapCharge } from "~/utils/tapPayment";
+import { startTapPayment } from "~/utils/tapPayment";
 
 const TAP_PAYMENT_ENABLED = true;
 
@@ -232,12 +233,22 @@ export default function ConfirmBooking() {
     if (!orderId) {
       throw new Error("Order was not created");
     }
+  
+    console.log("[Tap] Step 2: opening Tap Checkout...");
 
-    console.log("[Tap] Step 2: order created, id:", orderId);
-    console.log("[Tap] Step 3: calling create_tap_charge...");
-    const response = await createTapCharge(totalAmount, "SAR", orderId);
-    console.log("[Tap] Step 4: create_tap_charge result:", response);
-    return response;
+    return new Promise<void>((resolve, reject) => {
+      startTapPayment({
+        orderId,
+        amount: totalAmount,
+        onStarted: () => setIsSubmitting(false),
+        onSuccess: () => {
+          router.push("/booking/confrimedBooking");
+          resolve();
+        },
+        onCancelled: () => resolve(),
+        onError: (message) => reject(new Error(message)),
+      });
+    });
   };
 
   const handleConfirmBooking = async () => {

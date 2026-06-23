@@ -349,6 +349,7 @@
     "supportAgent": "وكيل الدعم",
     "supportAgentAdded": "تمت إضافة وكيل الدعم",
     "providerNearby": "مقدم الخدمة قريب! يجب أن يصل قريباً.",
+    "paymentSuccess": "تم الدفع بنجاح",
     "paymentFailed": "فشل الدفع",
     "cashPaymentAtService": "هذا الطلب دفع نقداً. يرجى الدفع لمقدم الخدمة مباشرة."
   },
