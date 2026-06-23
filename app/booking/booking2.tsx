@@ -52,16 +52,23 @@ export default function Booking2Screen() {
     { id: "wallet", image: Appwallet, name: t("booking.appwallet") },
     { id: "cash", image: Cashonpay, name: t("booking.cashonpay") },
   ];
-  // Fetch available packages on component mount
-  useEffect(() => {
-    fetchAvailablePlans();
-  }, []);
+  const categoryId = String(params.id || "");
 
-  const fetchAvailablePlans = async () => {
+  // Fetch available packages for selected category
+  useEffect(() => {
+    if (categoryId) {
+      fetchAvailablePlans(categoryId);
+    }
+  }, [categoryId]);
+
+  const fetchAvailablePlans = async (catId: string) => {
     try {
       const formData = new FormData();
       formData.append("type", "get_data");
       formData.append("table_name", "plans");
+      formData.append("cat_id", catId);
+
+      console.log("catId", catId);
 
       const response = await apiCall(formData);
       if (response && response.data) {
@@ -113,10 +120,7 @@ export default function Booking2Screen() {
     }
 
     if (!finalLat || !finalLng) {
-      Alert.alert(
-        t("error"),
-        t("booking.locationRequiredGoBack"),
-      );
+      Alert.alert(t("error"), t("booking.locationRequiredGoBack"));
       return;
     }
 
@@ -266,22 +270,79 @@ export default function Booking2Screen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   innerContainer: { flex: 1, paddingHorizontal: s(16), paddingTop: vs(8) },
-  sectionTitle: { fontSize: ms(17), fontFamily: FONTS.semiBold, marginBottom: vs(12), color: Colors.secondary },
-  packageCard: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(10), marginBottom: vs(10) },
+  sectionTitle: {
+    fontSize: ms(17),
+    fontFamily: FONTS.semiBold,
+    marginBottom: vs(12),
+    color: Colors.secondary,
+  },
+  packageCard: {
+    backgroundColor: Colors.primary300,
+    padding: s(14),
+    borderRadius: ms(10),
+    marginBottom: vs(10),
+  },
   selectedPackageCard: { borderWidth: 2, borderColor: Colors.primary },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center"},
-  packageName: { fontSize: ms(15), fontFamily: FONTS.semiBold, color: Colors.secondary },
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  packageName: {
+    fontSize: ms(15),
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+  },
   packageDetails: { fontSize: ms(13), color: Colors.secondary },
-  addCardText: { fontSize: ms(13), color: Colors.primary, fontFamily: FONTS.medium },
-  paymentCard: { backgroundColor: Colors.primary300, paddingHorizontal: s(14), paddingVertical: vs(12), borderRadius: ms(10), flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: vs(10) },
+  addCardText: {
+    fontSize: ms(13),
+    color: Colors.primary,
+    fontFamily: FONTS.medium,
+  },
+  paymentCard: {
+    backgroundColor: Colors.primary300,
+    paddingHorizontal: s(14),
+    paddingVertical: vs(12),
+    borderRadius: ms(10),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: vs(10),
+  },
   row: { flexDirection: "row", alignItems: "center", gap: s(14) },
   paymentImage: { width: s(38), height: s(38), resizeMode: "contain" },
   paymentName: { fontSize: ms(15), color: "#333", fontFamily: FONTS.regular },
-  radioOuter: { width: s(22), height: s(22), borderRadius: ms(11), borderWidth: 2, borderColor: "#666", alignItems: "center", justifyContent: "center" },
-  radioInner: { width: s(12), height: s(12), borderRadius: ms(6), backgroundColor: "#007AFF" },
-  buttonRow: { flexDirection: "row", justifyContent: "space-between", marginTop: vs(14), marginBottom: vs(14) },
-  featureItem: { flexDirection: "row", alignItems: "center", marginBottom: vs(4) },
+  radioOuter: {
+    width: s(22),
+    height: s(22),
+    borderRadius: ms(11),
+    borderWidth: 2,
+    borderColor: "#666",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioInner: {
+    width: s(12),
+    height: s(12),
+    borderRadius: ms(6),
+    backgroundColor: "#007AFF",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: vs(14),
+    marginBottom: vs(14),
+  },
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: vs(4),
+  },
   bulletPoint: { fontSize: ms(15), color: Colors.primary, marginRight: s(6) },
-  featureText: { fontSize: ms(13), color: Colors.secondary, fontFamily: FONTS.regular },
+  featureText: {
+    fontSize: ms(13),
+    color: Colors.secondary,
+    fontFamily: FONTS.regular,
+  },
   marginBottom: { marginBottom: vs(12) },
 });
