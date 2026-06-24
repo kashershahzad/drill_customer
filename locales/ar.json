@@ -215,6 +215,7 @@
     "paymentmethod": "طريقة الدفع",
     "visacard": "بطاقة فيزا",
     "applepay": "أبل باي",
+    "googlepay": "جوجل باي",
     "appwallet": "محفظة التطبيق",
     "cashonpay": "الدفع نقداً",
     "confrim": "تأكيد الحجز",

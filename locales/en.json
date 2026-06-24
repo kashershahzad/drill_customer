@@ -215,6 +215,7 @@
     "paymentmethod": "Payment Method",
     "visacard": "Visa Card",
     "applepay": "Apple Pay",
+    "googlepay": "Google Pay",
     "appwallet": "App Wallet",
     "cashonpay": "Cash on Pay",
     "confrim": "Confirm Booking",

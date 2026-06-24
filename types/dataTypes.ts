@@ -7,6 +7,7 @@ export type OrderType = {
   created_at?: string;
   timestamp?: string;
   payment_method?: string;
+  method_details?: string;
   payment_status?: string;
   address?: string;
   description?: string;

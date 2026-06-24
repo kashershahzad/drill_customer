@@ -32,15 +32,75 @@ type TapChargeCustomer = {
   phone: string;
 };
 
+export type TapPreferredPayment = "google" | "apple" | "card";
+
 export type StartTapPaymentParams = {
   orderId: string | number;
   amount: number;
   tipAmount?: number;
+  /** Opens the Tap sheet focused on the wallet/card the user chose at booking. */
+  preferredPayment?: TapPreferredPayment;
   onStarted?: () => void;
   onSuccess?: (chargeId: string) => void;
   onCancelled?: () => void;
   onError?: (message: string) => void;
 };
+
+const TAP_CARD_METHODS = [
+  "VISA",
+  "MASTERCARD",
+  "MADA",
+  "AMERICAN_EXPRESS",
+] as const;
+
+/** Map booking / order method_details to Tap checkout preference. */
+export function toTapPreferredPayment(
+  method?: string | null,
+): TapPreferredPayment | undefined {
+  const normalized = (method || "").toLowerCase().trim();
+  if (normalized === "google") return "google";
+  if (normalized === "apple") return "apple";
+  if (normalized === "visa") return "card";
+  return undefined;
+}
+
+function resolveCheckoutPaymentPreferences(
+  preferredPayment?: TapPreferredPayment,
+) {
+  if (preferredPayment === "google" && Platform.OS === "android") {
+    return {
+      paymentType: "DEVICE",
+      supportedPaymentMethods: ["GOOGLE_PAY", ...TAP_CARD_METHODS],
+      isApplePayAvailableOnClient: false,
+      isGooglePayAvailableOnClient: true,
+    };
+  }
+
+  if (preferredPayment === "apple" && Platform.OS === "ios") {
+    return {
+      paymentType: "DEVICE",
+      supportedPaymentMethods: ["APPLE_PAY", ...TAP_CARD_METHODS],
+      isApplePayAvailableOnClient: true,
+      isGooglePayAvailableOnClient: false,
+    };
+  }
+
+  if (preferredPayment === "card") {
+    return {
+      paymentType: "CARD",
+      supportedPaymentMethods: [...TAP_CARD_METHODS],
+      isApplePayAvailableOnClient: false,
+      isGooglePayAvailableOnClient: false,
+    };
+  }
+
+  return {
+    paymentType: "ALL",
+    supportedPaymentMethods: "ALL" as const,
+    isApplePayAvailableOnClient: Platform.OS === "ios",
+    isGooglePayAvailableOnClient: Platform.OS === "android",
+  };
+}
 
 const parsePhone = (phone?: string) => {
   const digits = (phone || "").replace(/\D/g, "");
@@ -272,11 +332,16 @@ async function pollOrderPaymentStatus(orderId: string): Promise<boolean> {
 function extractChargeIdFromCheckoutData(data: string): string | null {
   try {
     const parsed = JSON.parse(data) as Record<string, unknown>;
+    const charge = parsed.charge as Record<string, unknown> | undefined;
+    const result = parsed.result as Record<string, unknown> | undefined;
     const candidates = [
       parsed.chargeId,
       parsed.charge_id,
       parsed.id,
-      (parsed.charge as Record<string, unknown> | undefined)?.id,
+      charge?.id,
+      result?.chargeId,
+      result?.charge_id,
+      (result?.charge as Record<string, unknown> | undefined)?.id,
     ];
     const found = candidates.find(
       (v) => typeof v === "string" && String(v).startsWith("chg_"),
@@ -322,11 +387,14 @@ function buildTapCheckoutConfig(
   totalAmount: number,
   customer: TapChargeCustomer,
   hashString: string,
+  preferredPayment?: TapPreferredPayment,
 ) {
   const amountStr = totalAmount.toFixed(2);
   const language = i18n.language?.startsWith("ar") ? "ar" : "en";
   const publicKey = getTapPublicKey();
   const { tapOrderRef } = buildTapCheckoutReferences(rawOrderId);
+  const paymentPreferences =
+    resolveCheckoutPaymentPreferences(preferredPayment);
 
   const gateway: Record<string, string> = { publicKey };
   if (TAP_MERCHANT_ID) {
@@ -337,8 +405,8 @@ function buildTapCheckoutConfig(
     hashString,
     language,
     themeMode: "light",
-    supportedPaymentMethods: "ALL",
-    paymentType: "ALL",
+    supportedPaymentMethods: paymentPreferences.supportedPaymentMethods,
+    paymentType: paymentPreferences.paymentType,
     selectedCurrency: TAP_CURRENCY,
     supportedCurrencies: "ALL",
     supportedPaymentTypes: [],
@@ -398,7 +466,8 @@ function buildTapCheckoutConfig(
       forceLtr: false,
       alternativeCardInputs: { cardScanner: true, cardNFC: true },
     },
-    isApplePayAvailableOnClient: Platform.OS === "ios",
+    isApplePayAvailableOnClient: paymentPreferences.isApplePayAvailableOnClient,
+    isGooglePayAvailableOnClient: paymentPreferences.isGooglePayAvailableOnClient,
   };
 }
 
@@ -433,6 +502,7 @@ async function startTapCheckout(
     totalAmount,
     customer,
     hashString,
+    params.preferredPayment,
   );
 
   console.log("[Tap checkout] start", {
@@ -443,6 +513,9 @@ async function startTapCheckout(
     postUrl: TAP_CHECKOUT_POST_URL,
     amount: totalAmount.toFixed(2),
     currency: TAP_CURRENCY,
+    preferredPayment: params.preferredPayment ?? "(default)",
+    paymentType: configurations.paymentType,
+    supportedPaymentMethods: configurations.supportedPaymentMethods,
     publicKeyPrefix: getTapPublicKey().slice(0, 12),
   });
 
@@ -454,13 +527,8 @@ async function startTapCheckout(
     onSuccess: (data: string) => {
       successStarted = true;
       console.log("[Tap checkout] success raw:", data);
-      const chargeId = extractChargeIdFromCheckoutData(data);
-      if (!chargeId) {
-        finish(() =>
-          params.onError?.("Payment completed but charge ID was not returned"),
-        );
-        return;
-      }
+      const chargeId =
+        extractChargeIdFromCheckoutData(data) ?? "wallet_checkout_success";
       void finalizeSuccessfulPayment(rawOrderId, chargeId, finish, params);
     },
     onError: (error: string) => {

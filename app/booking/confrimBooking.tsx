@@ -29,7 +29,7 @@ import { BOOKING_PAY_LATER_KEY } from "~/utils/booking";
 import { formatAppDate, formatAppTime } from "~/utils/locale";
 import { ms, s, vs } from "~/utils/responsive";
 // import { createTapCharge } from "~/utils/tapPayment";
-import { startTapPayment } from "~/utils/tapPayment";
+import { startTapPayment, toTapPreferredPayment } from "~/utils/tapPayment";
 
 const TAP_PAYMENT_ENABLED = true;
 
@@ -150,8 +150,12 @@ export default function ConfirmBooking() {
       return null;
     }
 
-    const paymentMethod =
-      isPayLaterFlow() || payLater ? "later" : paymentMethodId || "pending";
+    const isLaterOrder = isPayLaterFlow() || payLater;
+    const paymentMethod = isLaterOrder ? "later" : paymentMethodId || "pending";
+    const methodDetails =
+      isLaterOrder && ["visa", "apple", "google"].includes(paymentMethodId)
+        ? paymentMethodId
+        : paymentMethod;
     const formData = new FormData();
     formData.append("type", "add_data");
     formData.append("table_name", "orders");
@@ -165,7 +169,7 @@ export default function ConfirmBooking() {
     formData.append("description", params.description || "");
     formData.append("package_id", params.packageId || "");
     formData.append("payment_method", paymentMethod);
-    formData.append("method_details", paymentMethod);
+    formData.append("method_details", methodDetails);
     formData.append("promo_code", isPromoValid ? promoCode : "");
     formData.append("amount", totalAmount.toString());
     formData.append("payment_status", tapChargeId ? "paid" : "pending");
@@ -240,6 +244,7 @@ export default function ConfirmBooking() {
       startTapPayment({
         orderId,
         amount: totalAmount,
+        preferredPayment: toTapPreferredPayment(paymentMethodId),
         onStarted: () => setIsSubmitting(false),
         onSuccess: () => {
           router.push("/booking/confrimedBooking");
@@ -269,7 +274,9 @@ export default function ConfirmBooking() {
       const useTap =
         TAP_PAYMENT_ENABLED &&
         paymentMethodId !== "later" &&
-        (paymentMethodId === "visa" || paymentMethodId === "apple");
+        (paymentMethodId === "visa" ||
+          paymentMethodId === "apple" ||
+          paymentMethodId === "google");
 
       if (useTap) {
         await handleTapPayment();

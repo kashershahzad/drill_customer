@@ -1,6 +1,7 @@
 import Applepay from "@/assets/images/applepay.png";
 import Appwallet from "@/assets/images/appwallet.png";
 import Cashonpay from "@/assets/images/cop.png";
+import GooglePay from "@/assets/images/gpay.png";
 import Visa from "@/assets/images/visa.png";
 import Button from "@/components/button";
 import Header from "@/components/header";
@@ -8,11 +9,12 @@ import Seprator from "@/components/seprator";
 import Stepper from "@/components/stepper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -46,13 +48,31 @@ export default function Booking2Screen() {
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
 
-  const paymentMethods = [
-    { id: "visa", image: Visa, name: t("booking.visacard") },
-    { id: "apple", image: Applepay, name: t("booking.applepay") },
-    { id: "wallet", image: Appwallet, name: t("booking.appwallet") },
-    { id: "cash", image: Cashonpay, name: t("booking.cashonpay") },
-  ];
+  const paymentMethods = useMemo(() => {
+    const methods = [
+      { id: "visa", image: Visa, name: t("booking.visacard") },
+      ...(Platform.OS === "ios"
+        ? [{ id: "apple", image: Applepay, name: t("booking.applepay") }]
+        : []),
+      ...(Platform.OS === "android"
+        ? [{ id: "google", image: GooglePay, name: t("booking.googlepay") }]
+        : []),
+      { id: "wallet", image: Appwallet, name: t("booking.appwallet") },
+      { id: "cash", image: Cashonpay, name: t("booking.cashonpay") },
+    ];
+    return methods;
+  }, [t]);
+
   const categoryId = String(params.id || "");
+
+  useEffect(() => {
+    if (selectedPayment === "apple" && Platform.OS !== "ios") {
+      setSelectedPayment(null);
+    }
+    if (selectedPayment === "google" && Platform.OS !== "android") {
+      setSelectedPayment(null);
+    }
+  }, [selectedPayment]);
 
   // Fetch available packages for selected category
   useEffect(() => {
@@ -155,7 +175,9 @@ export default function Booking2Screen() {
         paymentMethod: payLater
           ? t("later")
           : selectedPaymentMethod?.name || "",
-        paymentMethodDetails: payLater ? "later" : selectedPayment || "",
+        paymentMethodDetails: payLater
+          ? selectedPayment || "later"
+          : selectedPayment || "",
         payLater: payLater ? "1" : "0",
       },
     });

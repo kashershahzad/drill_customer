@@ -28,7 +28,7 @@ import {
 } from "~/utils/notification";
 import { ms, s, vs } from "~/utils/responsive";
 // import { createTapCharge } from "~/utils/tapPayment";
-import { startTapPayment } from "~/utils/tapPayment";
+import { startTapPayment, toTapPreferredPayment } from "~/utils/tapPayment";
 import ChatScreen from "./chat_screen";
 import OrderDetails from "./order_details";
 
@@ -540,10 +540,14 @@ const OrderPlace: React.FC = () => {
         //   tipAmount,
         // );
         await new Promise<void>((resolve, reject) => {
+          const preferredPayment = toTapPreferredPayment(
+            order?.method_details || order?.payment_method,
+          );
           startTapPayment({
             orderId: parsedOrderId,
             amount,
             tipAmount,
+            preferredPayment,
             onStarted: () => setIsPayingNow(false),
             onSuccess: async () => {
               showToast(t("order.paymentSuccess"), "success");
@@ -562,7 +566,7 @@ const OrderPlace: React.FC = () => {
         setIsPayingNow(false);
       }
     },
-    [isPayingNow, isCashPayment, order?.amount, orderId, showToast, t, refreshOrderDetails],
+    [isPayingNow, isCashPayment, order?.amount, order?.method_details, order?.payment_method, orderId, showToast, t, refreshOrderDetails],
   );
 
   const handlePay = () => {
