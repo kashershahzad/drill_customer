@@ -19,6 +19,7 @@ import MapView, { Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getInputFontSize, inputFieldStyles } from "~/components/inputfield";
 import { FONTS } from "~/constants/Fonts";
+import { DEFAULT_LOCATION } from "~/utils/location";
 import { ms, s, vs } from "~/utils/responsive";
 
 export default function LocationScreen() {
@@ -108,6 +109,11 @@ export default function LocationScreen() {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
+        setSelectedLocation({
+          latitude: parseFloat(DEFAULT_LOCATION.latitude),
+          longitude: parseFloat(DEFAULT_LOCATION.longitude),
+          address: DEFAULT_LOCATION.address,
+        });
         return;
       }
 
@@ -169,23 +175,32 @@ export default function LocationScreen() {
       }
 
       // Otherwise get current location
-      let location = await Location.getCurrentPositionAsync({});
-      const { latitude, longitude } = location.coords;
+      try {
+        const location = await Location.getCurrentPositionAsync({});
+        const { latitude, longitude } = location.coords;
 
-      setSelectedLocation({
-        latitude,
-        longitude,
-        address: t("booking.fetchingAddress"),
-      });
+        setSelectedLocation({
+          latitude,
+          longitude,
+          address: t("booking.fetchingAddress"),
+        });
 
-      fetchAddressFromCoords(latitude, longitude);
+        fetchAddressFromCoords(latitude, longitude);
 
-      mapRef.current?.animateToRegion({
-        latitude,
-        longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      });
+        mapRef.current?.animateToRegion({
+          latitude,
+          longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        });
+      } catch (error) {
+        console.error("Error getting current location:", error);
+        setSelectedLocation({
+          latitude: parseFloat(DEFAULT_LOCATION.latitude),
+          longitude: parseFloat(DEFAULT_LOCATION.longitude),
+          address: DEFAULT_LOCATION.address,
+        });
+      }
     })();
   }, []);
 

@@ -17,7 +17,7 @@ type Category = {
 type Prop = {
   onSelectLocation?: (
     location: string,
-    coordinates?: { latitude: number; longitude: number }
+    coordinates?: { latitude: number; longitude: number },
   ) => void;
   selectedLocation?: any;
   disabled?: boolean;
@@ -33,7 +33,7 @@ export default function SelectedLocation({
   const params = useLocalSearchParams();
   const { t } = useTranslation();
   const [address, setAddress] = useState<string | null>(
-    selectedLocation || params?.location || null
+    selectedLocation || params?.location || null,
   );
   const [isLoadingLocation, setIsLoadingLocation] = useState<boolean>(false);
   console.log("address", address);
@@ -59,7 +59,7 @@ export default function SelectedLocation({
 
         const geocodedAddress = await reverseGeocodeLocation(
           location.coords.latitude,
-          location.coords.longitude
+          location.coords.longitude,
         );
 
         if (geocodedAddress) {
@@ -75,7 +75,7 @@ export default function SelectedLocation({
         console.error("Error getting location:", error);
         Alert.alert(
           t("booking.locationError"),
-          t("booking.unableToRetrieveLocation")
+          t("booking.unableToRetrieveLocation"),
         );
       } finally {
         setIsLoadingLocation(false);
@@ -88,7 +88,7 @@ export default function SelectedLocation({
   // Function to convert coordinates to address
   const reverseGeocodeLocation = async (
     latitude: number,
-    longitude: number
+    longitude: number,
   ): Promise<string | null> => {
     try {
       const reverseGeocode = await LocationService.reverseGeocodeAsync({
@@ -179,11 +179,46 @@ export default function SelectedLocation({
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: vs(14) },
-  title: { fontSize: ms(17), fontFamily: FONTS.semiBold, color: Colors.secondary },
-  changeText: { fontSize: ms(13), fontFamily: FONTS.regular, color: Colors.primary },
-  locationContainer: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.primary300, paddingHorizontal: s(14), paddingVertical: vs(14), borderRadius: ms(10) },
-  iconWrapper: { backgroundColor: "white", borderRadius: ms(12), padding: s(10) },
-  address: { marginLeft: s(14), color: Colors.secondary300, flex: 1, fontSize: ms(14) },
-  disabledText: { color: Colors.secondary300, fontSize: ms(12), fontFamily: FONTS.regular, marginTop: vs(8), textAlign: "center" },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: vs(14),
+  },
+  title: {
+    fontSize: ms(17),
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+  },
+  changeText: {
+    fontSize: ms(13),
+    fontFamily: FONTS.regular,
+    color: Colors.primary,
+  },
+  locationContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.primary300,
+    paddingHorizontal: s(14),
+    paddingVertical: vs(14),
+    borderRadius: ms(10),
+  },
+  iconWrapper: {
+    backgroundColor: "white",
+    borderRadius: ms(12),
+    padding: s(10),
+  },
+  address: {
+    marginLeft: s(14),
+    color: Colors.secondary300,
+    flex: 1,
+    fontSize: ms(14),
+  },
+  disabledText: {
+    color: Colors.secondary300,
+    fontSize: ms(12),
+    fontFamily: FONTS.regular,
+    marginTop: vs(8),
+    textAlign: "center",
+  },
 });

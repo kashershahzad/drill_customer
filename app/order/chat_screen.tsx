@@ -120,6 +120,7 @@ type ChatScreenProps = {
   supportRefreshSignal?: number;
 };
 
+<<<<<<< HEAD
 const parseStoredId = (id: string | null): string | null => {
   if (!id) return null;
   try {
@@ -127,13 +128,41 @@ const parseStoredId = (id: string | null): string | null => {
   } catch {
     return id.replace(/^"|"$/g, "");
   }
+=======
+const normalizeStoredId = (value?: string | number | null): string => {
+  if (value == null) return "";
+  let id = String(value).trim();
+  if (!id) return "";
+  if (id.startsWith('"')) {
+    try {
+      id = String(JSON.parse(id));
+    } catch {
+      id = id.replace(/^"|"$/g, "");
+    }
+  }
+  return id.trim();
+};
+
+const isSupportAgentMessage = (
+  fromId: string,
+  support?: string | number,
+  senderLabel = "",
+) => {
+  if (fromId === "0") return true;
+  if (support === "1" || support === 1) return true;
+  const label = senderLabel.trim();
+  if (!label) return false;
+  return /support/i.test(label) && !/service agent/i.test(label);
+>>>>>>> a6cccc9 (code push)
 };
 
 export default function ChatScreen({
   supportRefreshSignal = 0,
 }: ChatScreenProps) {
   const { t } = useTranslation();
-  const toId = "";
+  const toIdRef = useRef<string>("");
+  const customerUserIdRef = useRef<string>("");
+  const providerUserIdRef = useRef<string>("");
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -193,6 +222,7 @@ export default function ChatScreen({
   useFocusEffect(
     useCallback(() => {
       const init = async () => {
+<<<<<<< HEAD
         const storedOrderId = parseStoredId(
           await AsyncStorage.getItem("order_id"),
         );
@@ -202,6 +232,26 @@ export default function ChatScreen({
         if (storedOrderId && storedUserId) {
           fetchOrderDetails(storedOrderId);
           fetchChatHistory(storedOrderId, storedUserId);
+=======
+        const storedOrderId = normalizeStoredId(
+          await AsyncStorage.getItem("order_id"),
+        );
+        const userId = normalizeStoredId(await AsyncStorage.getItem("user_id"));
+        setOrderId(storedOrderId);
+        setUserId(userId);
+        customerUserIdRef.current = userId;
+
+        if (storedOrderId && userId) {
+          const orderMeta = await fetchOrderDetails(storedOrderId);
+          fetchChatHistory(
+            storedOrderId,
+            userId,
+            true,
+            undefined,
+            orderMeta?.toId,
+            orderMeta?.provider,
+          );
+>>>>>>> a6cccc9 (code push)
 
           // Set up interval to fetch new messages every few seconds
           if (intervalRef.current) {
@@ -209,9 +259,24 @@ export default function ChatScreen({
           }
 
           intervalRef.current = setInterval(() => {
+<<<<<<< HEAD
             if (storedOrderId && storedUserId) {
               fetchOrderDetails(storedOrderId);
               fetchChatHistory(storedOrderId, storedUserId, false); // Pass false to not show loading indicator
+=======
+            if (storedOrderId && userId) {
+              void (async () => {
+                const meta = await fetchOrderDetails(storedOrderId);
+                fetchChatHistory(
+                  storedOrderId,
+                  userId,
+                  false,
+                  undefined,
+                  meta?.toId,
+                  meta?.provider,
+                );
+              })();
+>>>>>>> a6cccc9 (code push)
             }
           }, 10000);
         }
@@ -237,8 +302,27 @@ export default function ChatScreen({
       formData.append("id", normalizedOrderId);
 
       const response = await apiCall(formData);
+      console.log("order details", response);
       if (response && response.data && response.data.length > 0) {
         const orderData = response.data[0];
+        const resolvedToId = normalizeStoredId(orderData.to_id ?? "0");
+        const resolvedCustomerId = normalizeStoredId(orderData.user_id);
+        const resolvedProviderId = normalizeStoredId(
+          orderData.provider?.id ?? orderData.to_id,
+        );
+
+        toIdRef.current = resolvedToId;
+        if (resolvedCustomerId) {
+          customerUserIdRef.current = resolvedCustomerId;
+        }
+        if (resolvedProviderId && resolvedProviderId !== "0") {
+          providerUserIdRef.current = resolvedProviderId;
+        }
+
+        if (orderData.provider) {
+          setProviderInfo(orderData.provider);
+        }
+
         const isSupportRequired =
           orderData.support_required === "1" ||
           orderData.support_required === 1;
@@ -249,10 +333,63 @@ export default function ChatScreen({
         }
 
         setSupportRequired(isSupportRequired);
+
+        return {
+          toId: resolvedToId,
+          provider: orderData.provider ?? null,
+          customerUserId: resolvedCustomerId,
+          providerUserId: resolvedProviderId,
+        };
       }
     } catch (error) {
       console.error("Failed to fetch order details", error);
     }
+
+    return null;
+  };
+
+  const resolveMessageSender = (
+    msg: {
+      from_id?: string | number;
+      support?: string | number;
+      sender?: string | null;
+    },
+    customerUserId: string,
+    provider?: { id?: string | number; name?: string; image?: string | null } | null,
+    providerUserId = "",
+  ): {
+    sender: "user" | "provider" | "support_agent";
+    senderName: string;
+    senderImage: string | null;
+  } => {
+    const fromId = normalizeStoredId(msg.from_id);
+    const customerId = normalizeStoredId(customerUserId);
+    const providerId = normalizeStoredId(
+      providerUserId || provider?.id || providerUserIdRef.current,
+    );
+    const senderLabel = String(msg.sender ?? "").trim();
+
+    if (customerId && fromId === customerId) {
+      return {
+        sender: "user",
+        senderName: senderLabel || t("me"),
+        senderImage: null,
+      };
+    }
+
+    if (isSupportAgentMessage(fromId, msg.support, senderLabel)) {
+      return {
+        sender: "support_agent",
+        senderName: senderLabel || t("order.supportAgent"),
+        senderImage: null,
+      };
+    }
+
+    return {
+      sender: "provider",
+      senderName: senderLabel || provider?.name || t("provider"),
+      senderImage: provider?.image || null,
+    };
   };
 
   const fetchChatHistory = async (
@@ -260,11 +397,14 @@ export default function ChatScreen({
     userIdParam: string,
     showLoading = true,
     showSupportMessage?: boolean,
+    chatToId?: string,
+    chatProvider?: { name?: string; image?: string | null } | null,
   ) => {
     if (showLoading) {
       setIsLoading(true);
     }
 
+<<<<<<< HEAD
     const normalizedOrderId = parseStoredId(orderIdParam) ?? orderIdParam;
     const normalizedUserId = parseStoredId(userIdParam) ?? userIdParam;
 
@@ -273,18 +413,32 @@ export default function ChatScreen({
     formData.append("user_id", normalizedUserId);
     formData.append("order_id", normalizedOrderId);
     formData.append("to_id", toId);
+=======
+    const resolvedToId = chatToId ?? toIdRef.current ?? "0";
+    const resolvedProvider = chatProvider ?? providerInfo;
+    const customerUserId =
+      customerUserIdRef.current || normalizeStoredId(userIdParam);
 
-    // console.log("[ChatScreen] formData", formData);
+    const formData = new FormData();
+    formData.append("type", "getchat");
+    formData.append("user_id", customerUserId);
+    formData.append("order_id", normalizeStoredId(orderIdParam));
+    formData.append("to_id", resolvedToId);
+>>>>>>> a6cccc9 (code push)
+
     try {
       const response = await apiCall(formData);
       console.log("chat history", response);
+<<<<<<< HEAD
       if (response && response.chat) {
         const customerId =
           normalizedUserId ||
           response.user?.id ||
           response.user?.user_id;
+=======
+>>>>>>> a6cccc9 (code push)
 
-        // Store user and provider info
+      if (response && Array.isArray(response.chat)) {
         if (response.user) {
           setUserInfo(response.user);
         }
@@ -293,6 +447,7 @@ export default function ChatScreen({
         }
 
         const formattedMessages = response.chat.map((msg: any) => {
+<<<<<<< HEAD
           const isUser = String(msg.from_id) === String(customerId);
           const isSupportAgent =
             msg.support === "1" ||
@@ -325,15 +480,23 @@ export default function ChatScreen({
               : sender === "support_agent"
                 ? "Support Agent"
                 : "Provider");
+=======
+          const { sender, senderName, senderImage } = resolveMessageSender(
+            msg,
+            customerUserId,
+            response.provider ?? resolvedProvider,
+            providerUserIdRef.current,
+          );
+>>>>>>> a6cccc9 (code push)
 
           return {
-            id: msg.id,
+            id: String(msg.id),
             text: msg.msg,
-            sender: sender,
-            timestamp: Number(msg.datetime),
+            sender,
+            timestamp: Number(msg.datetime) || Date.now(),
             msgType: msg.msg_type === "file" ? "file" : "msg",
             senderName,
-            senderImage: senderInfo?.image || null,
+            senderImage,
           };
         });
 
@@ -443,7 +606,7 @@ export default function ChatScreen({
       const formData = new FormData();
       formData.append("type", "sendmsg");
       formData.append("user_id", userId);
-      formData.append("to_id", toId);
+      formData.append("to_id", toIdRef.current || "0");
       formData.append("order_id", orderId);
 
       // Determine message type and content based on attachment
@@ -567,8 +730,15 @@ export default function ChatScreen({
 
       setHasShownSupportMessage(true);
       setSupportRequired(true);
-      await fetchOrderDetails(orderId);
-      await fetchChatHistory(orderId, userId, false, true);
+      const meta = await fetchOrderDetails(orderId);
+      await fetchChatHistory(
+        orderId,
+        userId,
+        false,
+        true,
+        meta?.toId,
+        meta?.provider,
+      );
     };
 
     refreshAfterSupport();

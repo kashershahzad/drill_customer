@@ -21,9 +21,13 @@ interface OrderDetailsProps {
   onAddRating?: () => void;
 }
 
-export default function OrderDetails({ order, onAddRating }: OrderDetailsProps) {
+export default function OrderDetails({
+  order,
+  onAddRating,
+}: OrderDetailsProps) {
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const { t } = useTranslation();
+  console.log("order  details", order);
 
   const hasProvider = !!order.provider;
 

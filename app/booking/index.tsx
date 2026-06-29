@@ -10,11 +10,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "~/constants/Colors";
@@ -32,15 +32,15 @@ export default function BookingScreen() {
   });
 
   const [serviceType, setServiceType] = useState<"instant" | "schedule">(
-    (params.service_type as "instant" | "schedule") || "instant"
+    (params.service_type as "instant" | "schedule") || "instant",
   );
 
   const [scheduleDate, setScheduleDate] = useState<string | null>(
-    (params.schedule_date as string) || null
+    (params.schedule_date as string) || null,
   );
 
   const [scheduleTime, setScheduleTime] = useState<string | null>(
-    (params.schedule_time as string) || null
+    (params.schedule_time as string) || null,
   );
 
   const [latlng, setLatlng] = useState({
@@ -49,15 +49,15 @@ export default function BookingScreen() {
   });
 
   const [selectedLocation, setSelectedLocation] = useState<string | null>(
-    (params.location as string) || null
+    (params.location as string) || null,
   );
 
   const [selectedImage, setSelectedImage] = useState<string | undefined>(
-    (params.selectedImage as string) || undefined
+    (params.selectedImage as string) || undefined,
   );
 
   const [description, setDescription] = useState<string>(
-    (params.description as string) || ""
+    (params.description as string) || "",
   );
 
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function BookingScreen() {
     // Ensure we have lat/lng - use state if params don't have it
     const finalLat = latlng.latitude || params.latitude;
     const finalLng = latlng.longitude || params.longitude;
-    
+
     router.push({
       pathname: "/booking/booking2",
       params: {
@@ -244,12 +244,39 @@ export default function BookingScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "space-between", backgroundColor: Colors.white },
+  container: {
+    flex: 1,
+    justifyContent: "space-between",
+    backgroundColor: Colors.white,
+  },
   content: { paddingHorizontal: s(16), paddingTop: vs(8) },
   buttonContainer: { paddingHorizontal: s(16), paddingVertical: vs(12) },
-  scheduleInfoContainer: { backgroundColor: Colors.primary300, padding: s(14), borderRadius: ms(12), marginBottom: vs(14) },
-  scheduleInfoTitle: { fontSize: ms(15), fontFamily: FONTS.semiBold, color: Colors.secondary, marginBottom: vs(10) },
-  scheduleInfoRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: vs(7) },
-  scheduleInfoLabel: { fontSize: ms(13), fontFamily: FONTS.medium, color: Colors.gray },
-  scheduleInfoValue: { fontSize: ms(13), fontFamily: FONTS.semiBold, color: Colors.secondary },
+  scheduleInfoContainer: {
+    backgroundColor: Colors.primary300,
+    padding: s(14),
+    borderRadius: ms(12),
+    marginBottom: vs(14),
+  },
+  scheduleInfoTitle: {
+    fontSize: ms(15),
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+    marginBottom: vs(10),
+  },
+  scheduleInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: vs(7),
+  },
+  scheduleInfoLabel: {
+    fontSize: ms(13),
+    fontFamily: FONTS.medium,
+    color: Colors.gray,
+  },
+  scheduleInfoValue: {
+    fontSize: ms(13),
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+  },
 });

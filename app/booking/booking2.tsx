@@ -1,7 +1,5 @@
-import Applepay from "@/assets/images/applepay.png";
 import Appwallet from "@/assets/images/appwallet.png";
 import Cashonpay from "@/assets/images/cop.png";
-import GooglePay from "@/assets/images/gpay.png";
 import Visa from "@/assets/images/visa.png";
 import Button from "@/components/button";
 import Header from "@/components/header";
@@ -14,7 +12,6 @@ import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -48,31 +45,16 @@ export default function Booking2Screen() {
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
 
-  const paymentMethods = useMemo(() => {
-    const methods = [
+  const paymentMethods = useMemo(
+    () => [
       { id: "visa", image: Visa, name: t("booking.visacard") },
-      ...(Platform.OS === "ios"
-        ? [{ id: "apple", image: Applepay, name: t("booking.applepay") }]
-        : []),
-      ...(Platform.OS === "android"
-        ? [{ id: "google", image: GooglePay, name: t("booking.googlepay") }]
-        : []),
       { id: "wallet", image: Appwallet, name: t("booking.appwallet") },
       { id: "cash", image: Cashonpay, name: t("booking.cashonpay") },
-    ];
-    return methods;
-  }, [t]);
+    ],
+    [t],
+  );
 
   const categoryId = String(params.id || "");
-
-  useEffect(() => {
-    if (selectedPayment === "apple" && Platform.OS !== "ios") {
-      setSelectedPayment(null);
-    }
-    if (selectedPayment === "google" && Platform.OS !== "android") {
-      setSelectedPayment(null);
-    }
-  }, [selectedPayment]);
 
   // Fetch available packages for selected category
   useEffect(() => {
@@ -154,6 +136,8 @@ export default function Booking2Screen() {
       await AsyncStorage.removeItem(BOOKING_PAY_LATER_KEY);
     }
 
+    const isTapPayment = selectedPayment === "visa";
+
     router.push({
       pathname: "/booking/confrimBooking",
       params: {
@@ -179,6 +163,7 @@ export default function Booking2Screen() {
           ? selectedPayment || "later"
           : selectedPayment || "",
         payLater: payLater ? "1" : "0",
+        autoPay: !payLater && isTapPayment ? "1" : "0",
       },
     });
   };
@@ -186,10 +171,6 @@ export default function Booking2Screen() {
   const handleLater = () => proceedToConfirm(true);
 
   const handleNext = () => proceedToConfirm();
-
-  const handleAddCard = () => {
-    router.push("/booking/addCard");
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -238,15 +219,7 @@ export default function Booking2Screen() {
 
           <Seprator />
 
-          {/* Payment Method */}
-          <View style={[styles.rowBetween, { marginBottom: vs(12) }]}>
-            <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>
-              {t("booking.paymentmethod")}
-            </Text>
-            <TouchableOpacity onPress={handleAddCard}>
-              <Text style={styles.addCardText}>{t("addCard")}</Text>
-            </TouchableOpacity>
-          </View>
+          <Text style={styles.sectionTitle}>{t("booking.paymentmethod")}</Text>
 
           {paymentMethods.map((method) => (
             <TouchableOpacity
@@ -316,11 +289,6 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
   },
   packageDetails: { fontSize: ms(13), color: Colors.secondary },
-  addCardText: {
-    fontSize: ms(13),
-    color: Colors.primary,
-    fontFamily: FONTS.medium,
-  },
   paymentCard: {
     backgroundColor: Colors.primary300,
     paddingHorizontal: s(14),

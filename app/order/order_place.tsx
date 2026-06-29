@@ -220,11 +220,12 @@ const OrderPlace: React.FC = () => {
     const formData = new FormData();
     formData.append("type", "get_data");
     formData.append("table_name", "orders");
+    formData.append("customer_review", userId || "");
     formData.append("id", parsedId);
 
     try {
       const response = await apiCall(formData);
-      // console.log("response", response);
+      console.log("customer rating response", response);
 
       if (response && response.data && response.data.length > 0) {
         applyOrderUpdate(response.data[0]);
@@ -566,7 +567,17 @@ const OrderPlace: React.FC = () => {
         setIsPayingNow(false);
       }
     },
-    [isPayingNow, isCashPayment, order?.amount, order?.method_details, order?.payment_method, orderId, showToast, t, refreshOrderDetails],
+    [
+      isPayingNow,
+      isCashPayment,
+      order?.amount,
+      order?.method_details,
+      order?.payment_method,
+      orderId,
+      showToast,
+      t,
+      refreshOrderDetails,
+    ],
   );
 
   const handlePay = () => {
@@ -786,7 +797,7 @@ const OrderPlace: React.FC = () => {
             order={order}
             onAddRating={
               order.status?.toLowerCase() === "completed" &&
-              Number(order.rating) <= 0
+              Number(order.customer_review?.rating ?? order.rating ?? 0) <= 0
                 ? handleAddRating
                 : undefined
             }

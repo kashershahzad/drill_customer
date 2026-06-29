@@ -8,7 +8,7 @@ import Seprator from "@/components/seprator";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -29,7 +29,7 @@ import { BOOKING_PAY_LATER_KEY } from "~/utils/booking";
 import { formatAppDate, formatAppTime } from "~/utils/locale";
 import { ms, s, vs } from "~/utils/responsive";
 // import { createTapCharge } from "~/utils/tapPayment";
-import { startTapPayment, toTapPreferredPayment } from "~/utils/tapPayment";
+import { startTapPayment } from "~/utils/tapPayment";
 
 const TAP_PAYMENT_ENABLED = true;
 
@@ -52,6 +52,7 @@ type BookingParams = {
   schedule_date?: string;
   schedule_time?: string;
   payLater?: string;
+  autoPay?: string;
 };
 
 const getParam = (value?: string | string[]) =>
@@ -85,15 +86,10 @@ export default function ConfirmBooking() {
   const [discount, setDiscount] = useState(0);
   const [isPromoValid, setIsPromoValid] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Calculate price details
-  const packagePrice = Number(params.packagePrice || 200);
-  const taxRate = 0.02; // 2% tax
-  const tax = packagePrice * taxRate;
-  const subTotal = packagePrice;
-  const totalAmount = packagePrice + tax - discount;
+  const autoPayStarted = useRef(false);
 
   const paymentMethodId = getParam(params.paymentMethodDetails);
+  const autoPayParam = getParam(params.autoPay) === "1";
   const payLaterParam = getParam(params.payLater) === "1";
   const isPayLater =
     payLaterParam ||
@@ -102,6 +98,21 @@ export default function ConfirmBooking() {
 
   const isPayLaterFlow = () =>
     isPayLater || paymentMethodId === "later" || payLaterParam;
+
+  const isTapPaymentMethod = () =>
+    TAP_PAYMENT_ENABLED &&
+    paymentMethodId !== "later" &&
+    (paymentMethodId === "visa" ||
+      paymentMethodId === "online" ||
+      paymentMethodId === "apple" ||
+      paymentMethodId === "google");
+
+  // Calculate price details
+  const packagePrice = Number(params.packagePrice || 200);
+  const taxRate = 0.02; // 2% tax
+  const tax = packagePrice * taxRate;
+  const subTotal = packagePrice;
+  const totalAmount = packagePrice + tax - discount;
 
   const handleVerifyPromoCode = async () => {
     try {
@@ -143,17 +154,14 @@ export default function ConfirmBooking() {
     }
 
     if (!customerLat || !customerLng) {
-      Alert.alert(
-        t("error"),
-        t("booking.locationRequired"),
-      );
+      Alert.alert(t("error"), t("booking.locationRequired"));
       return null;
     }
 
     const isLaterOrder = isPayLaterFlow() || payLater;
     const paymentMethod = isLaterOrder ? "later" : paymentMethodId || "pending";
     const methodDetails =
-      isLaterOrder && ["visa", "apple", "google"].includes(paymentMethodId)
+      isLaterOrder && ["online", "visa", "apple", "google"].includes(paymentMethodId)
         ? paymentMethodId
         : paymentMethod;
     const formData = new FormData();
@@ -237,14 +245,13 @@ export default function ConfirmBooking() {
     if (!orderId) {
       throw new Error("Order was not created");
     }
-  
+
     console.log("[Tap] Step 2: opening Tap Checkout...");
 
     return new Promise<void>((resolve, reject) => {
       startTapPayment({
         orderId,
         amount: totalAmount,
-        preferredPayment: toTapPreferredPayment(paymentMethodId),
         onStarted: () => setIsSubmitting(false),
         onSuccess: () => {
           router.push("/booking/confrimedBooking");
@@ -271,14 +278,7 @@ export default function ConfirmBooking() {
         return;
       }
 
-      const useTap =
-        TAP_PAYMENT_ENABLED &&
-        paymentMethodId !== "later" &&
-        (paymentMethodId === "visa" ||
-          paymentMethodId === "apple" ||
-          paymentMethodId === "google");
-
-      if (useTap) {
+      if (isTapPaymentMethod()) {
         await handleTapPayment();
         return;
       }
@@ -296,6 +296,14 @@ export default function ConfirmBooking() {
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    if (autoPayStarted.current || !autoPayParam || isPayLaterFlow()) return;
+    if (!isTapPaymentMethod()) return;
+
+    autoPayStarted.current = true;
+    void handleConfirmBooking();
+  }, [autoPayParam]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -426,7 +434,9 @@ export default function ConfirmBooking() {
               style={styles.applyButton}
               onPress={handleVerifyPromoCode}
             >
-              <Text style={styles.applyButtonText}>{t("booking.applyPromo")}</Text>
+              <Text style={styles.applyButtonText}>
+                {t("booking.applyPromo")}
+              </Text>
             </TouchableOpacity>
           </View>
 

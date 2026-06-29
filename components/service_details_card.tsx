@@ -10,6 +10,43 @@ import { OrderType } from "~/types/dataTypes";
 
 export type Order = OrderType;
 
+type OrderReviewData = {
+  id?: string;
+  user_id?: string;
+  order_id?: string;
+  rating?: string;
+  review?: string;
+  review_by?: string;
+  status?: string;
+  timestamp?: string;
+};
+
+const getCustomerReview = (order: Order): OrderReviewData | null => {
+  const nestedReview =
+    order.customer_review ??
+    (typeof order.review === "object" && order.review !== null
+      ? order.review
+      : null);
+
+  if (nestedReview && typeof nestedReview === "object") {
+    return nestedReview as OrderReviewData;
+  }
+
+  const flatReview =
+    typeof order.review === "string" ? order.review.trim() : "";
+  const flatRating = order.rating;
+
+  if (Number(flatRating) > 0 || flatReview) {
+    return {
+      rating: flatRating,
+      review: flatReview || undefined,
+      timestamp: order.timestamp,
+    };
+  }
+
+  return null;
+};
+
 type ServiceDetailsCardProps = {
   order: Order;
   orderScreen?: boolean;
@@ -74,7 +111,10 @@ export default function ServiceDetailsCard({
   const isCancelled = order.status?.toLowerCase() === "cancelled";
   const isDisabled = isCancelled || disabled;
   const isCompleted = order.status?.toLowerCase() === "completed";
-  const hasRating = Number(order.rating) > 0;
+  const customerReview = getCustomerReview(order);
+  const ratingValue = customerReview?.rating ?? order.rating ?? "0";
+  const reviewText = customerReview?.review?.trim() ?? "";
+  const hasRating = Number(ratingValue) > 0;
   const showRatingSection = isCompleted;
   const showTip =
     isCompleted && (order.tip_status === "1" || order.tip_status === 1);
@@ -202,11 +242,13 @@ export default function ServiceDetailsCard({
           <>
             <DashedSeprator />
             <View style={styles.detailsRow}>
-              <Text style={styles.label}>{t("popup.rateExperience")}</Text>
+              <Text style={styles.label}>
+                {hasRating ? t("popup.rating") : t("popup.rateExperience")}
+              </Text>
               {hasRating ? (
                 <View style={styles.ratingContainer}>
                   <Text style={styles.starIcon}>★</Text>
-                  <Text style={styles.value}>{order.rating}</Text>
+                  <Text style={styles.value}>{ratingValue}</Text>
                 </View>
               ) : (
                 <TouchableOpacity
@@ -344,6 +386,18 @@ const styles = StyleSheet.create({
   },
   addRatingTextDisabled: {
     color: Colors.secondary300,
+  },
+  reviewRow: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: vs(4),
+    marginTop: vs(2),
+  },
+  reviewText: {
+    color: Colors.secondary,
+    fontSize: ms(13),
+    fontFamily: FONTS.medium,
+    lineHeight: ms(18),
   },
   tip: { color: Colors.success, fontSize: ms(13), fontFamily: FONTS.semiBold },
 });

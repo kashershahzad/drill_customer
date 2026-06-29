@@ -60,7 +60,8 @@ export function toTapPreferredPayment(
   const normalized = (method || "").toLowerCase().trim();
   if (normalized === "google") return "google";
   if (normalized === "apple") return "apple";
-  if (normalized === "visa") return "card";
+  if (normalized === "visa") return undefined;
+  if (normalized === "online") return undefined;
   return undefined;
 }
 

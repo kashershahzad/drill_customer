@@ -105,7 +105,13 @@ export default function Header({
           </TouchableOpacity>
         )}
         {!homeScreen ? (
-          <Text style={styles.title}>{title}</Text>
+          <Text
+            style={styles.title}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {title}
+          </Text>
         ) : (
           <View style={styles.userContainer}>
             <Image
@@ -113,9 +119,13 @@ export default function Header({
               style={styles.userImage}
               accessibilityLabel={t("appLogo")}
             />
-            <View>
-              <Text style={styles.welcomeText}>{t("welcome")}</Text>
-              <Text style={styles.userName}>👋 {userName}</Text>
+            <View style={styles.userTextContainer}>
+              <Text style={styles.welcomeText} numberOfLines={1}>
+                {t("welcome")}
+              </Text>
+              <Text style={styles.userName} numberOfLines={1} ellipsizeMode="tail">
+                👋 {userName}
+              </Text>
             </View>
           </View>
         )}
@@ -149,10 +159,12 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     marginBottom: vs(16),
+    gap: s(8),
   },
   leftSection: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
   },
@@ -164,21 +176,31 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.gray100,
     borderRadius: ms(22),
     marginRight: s(10),
+    flexShrink: 0,
   },
   iconButton: {
     minWidth: s(44),
     minHeight: vs(44),
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   title: {
+    flex: 1,
+    minWidth: 0,
     fontSize: ms(22),
     fontFamily: FONTS.bold,
     color: Colors.secondary,
   },
   userContainer: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: "row",
     alignItems: "center",
+  },
+  userTextContainer: {
+    flex: 1,
+    minWidth: 0,
   },
   userImage: {
     width: s(46),
@@ -203,5 +225,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: Colors.gray100,
     borderRadius: s(22),
+    flexShrink: 0,
   },
 });

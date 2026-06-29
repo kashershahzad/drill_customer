@@ -88,6 +88,7 @@ export default function Orders() {
     formData.append("type", "get_data");
     formData.append("table_name", "orders");
     formData.append("user_id", userId);
+    formData.append("customer_review", userId);
 
     console.log("[Orders] formData", formData);
 
@@ -207,7 +208,9 @@ export default function Orders() {
                   onPress={() => handleOrderScreen(order)}
                   onAddRating={
                     order.status?.toLowerCase() === "completed" &&
-                    Number(order.rating) <= 0
+                    Number(
+                      order.customer_review?.rating ?? order.rating ?? 0,
+                    ) <= 0
                       ? () => handleAddRating(order)
                       : undefined
                   }
