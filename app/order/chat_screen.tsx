@@ -341,11 +341,12 @@ export default function ChatScreen({
       providerUserId || provider?.id || providerUserIdRef.current,
     );
     const senderLabel = String(msg.sender ?? "").trim();
+    const senderName = senderLabel || t("order.nameNotAvailable");
 
     if (customerId && fromId === customerId) {
       return {
         sender: "user",
-        senderName: senderLabel || t("me"),
+        senderName,
         senderImage: null,
       };
     }
@@ -353,14 +354,14 @@ export default function ChatScreen({
     if (isSupportAgentMessage(fromId, msg.support, senderLabel)) {
       return {
         sender: "support_agent",
-        senderName: senderLabel || t("order.supportAgent"),
+        senderName,
         senderImage: null,
       };
     }
 
     return {
       sender: "provider",
-      senderName: senderLabel || provider?.name || t("provider"),
+      senderName,
       senderImage: provider?.image || null,
     };
   };
@@ -385,6 +386,7 @@ export default function ChatScreen({
     formData.append("type", "checkmsg");
     formData.append("user_id", customerUserId);
     formData.append("order_id", normalizeStoredId(orderIdParam));
+    formData.append("to_id", normalizeStoredId(chatToId));
 
     try {
       const response = await apiCall(formData);
@@ -727,7 +729,7 @@ export default function ChatScreen({
                           : styles.providerMessageContainer
                     }
                   >
-                    {showProfile && message.senderName ? (
+                    {showProfile ? (
                       <View
                         style={
                           message.sender === "user"

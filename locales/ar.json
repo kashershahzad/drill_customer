@@ -348,6 +348,7 @@
     "galleryPermission": "نحتاج أذونات المعرض للوصول إلى صورك!",
     "errorWithUpload": "حدث خطأ ما مع التحميل",
     "failedToUploadImage": "فشل تحميل الصورة",
+    "nameNotAvailable": "الاسم غير متوفر",
     "supportAgent": "وكيل الدعم",
     "supportAgentAdded": "تمت إضافة وكيل الدعم",
     "providerNearby": "مقدم الخدمة قريب! يجب أن يصل قريباً.",

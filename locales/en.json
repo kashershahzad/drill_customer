@@ -348,6 +348,7 @@
     "galleryPermission": "We need gallery permissions to access your photos!",
     "errorWithUpload": "Something went wrong with upload",
     "failedToUploadImage": "Failed to upload image",
+    "nameNotAvailable": "Name Not Available",
     "supportAgent": "Support Agent",
     "supportAgentAdded": "Support Agent Added",
     "providerNearby": "Provider is nearby! They should arrive soon.",
