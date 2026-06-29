@@ -120,6 +120,15 @@ type ChatScreenProps = {
   supportRefreshSignal?: number;
 };
 
+const parseStoredId = (id: string | null): string | null => {
+  if (!id) return null;
+  try {
+    return String(JSON.parse(id));
+  } catch {
+    return id.replace(/^"|"$/g, "");
+  }
+};
+
 export default function ChatScreen({
   supportRefreshSignal = 0,
 }: ChatScreenProps) {
@@ -184,13 +193,15 @@ export default function ChatScreen({
   useFocusEffect(
     useCallback(() => {
       const init = async () => {
-        const storedOrderId = await AsyncStorage.getItem("order_id");
-        const userId = await AsyncStorage.getItem("user_id");
+        const storedOrderId = parseStoredId(
+          await AsyncStorage.getItem("order_id"),
+        );
+        const storedUserId = await AsyncStorage.getItem("user_id");
         setOrderId(storedOrderId);
-        setUserId(userId);
-        if (storedOrderId && userId) {
+        setUserId(storedUserId);
+        if (storedOrderId && storedUserId) {
           fetchOrderDetails(storedOrderId);
-          fetchChatHistory(storedOrderId, userId);
+          fetchChatHistory(storedOrderId, storedUserId);
 
           // Set up interval to fetch new messages every few seconds
           if (intervalRef.current) {
@@ -198,9 +209,9 @@ export default function ChatScreen({
           }
 
           intervalRef.current = setInterval(() => {
-            if (storedOrderId && userId) {
+            if (storedOrderId && storedUserId) {
               fetchOrderDetails(storedOrderId);
-              fetchChatHistory(storedOrderId, userId, false); // Pass false to not show loading indicator
+              fetchChatHistory(storedOrderId, storedUserId, false); // Pass false to not show loading indicator
             }
           }, 10000);
         }
@@ -219,10 +230,11 @@ export default function ChatScreen({
 
   const fetchOrderDetails = async (orderIdParam: string) => {
     try {
+      const normalizedOrderId = parseStoredId(orderIdParam) ?? orderIdParam;
       const formData = new FormData();
       formData.append("type", "get_data");
       formData.append("table_name", "orders");
-      formData.append("id", orderIdParam);
+      formData.append("id", normalizedOrderId);
 
       const response = await apiCall(formData);
       if (response && response.data && response.data.length > 0) {
@@ -253,18 +265,24 @@ export default function ChatScreen({
       setIsLoading(true);
     }
 
+    const normalizedOrderId = parseStoredId(orderIdParam) ?? orderIdParam;
+    const normalizedUserId = parseStoredId(userIdParam) ?? userIdParam;
+
     const formData = new FormData();
     formData.append("type", "getchat");
-    formData.append("user_id", userIdParam);
-    formData.append("order_id", orderIdParam);
+    formData.append("user_id", normalizedUserId);
+    formData.append("order_id", normalizedOrderId);
     formData.append("to_id", toId);
 
     // console.log("[ChatScreen] formData", formData);
     try {
       const response = await apiCall(formData);
-      // console.log("chat history", response);
+      console.log("chat history", response);
       if (response && response.chat) {
-        const fromId = response.user.id;
+        const customerId =
+          normalizedUserId ||
+          response.user?.id ||
+          response.user?.user_id;
 
         // Store user and provider info
         if (response.user) {
@@ -275,7 +293,7 @@ export default function ChatScreen({
         }
 
         const formattedMessages = response.chat.map((msg: any) => {
-          const isUser = String(msg.from_id) === String(fromId);
+          const isUser = String(msg.from_id) === String(customerId);
           const isSupportAgent =
             msg.support === "1" ||
             msg.support === 1 ||
@@ -297,11 +315,13 @@ export default function ChatScreen({
             };
           }
 
+          const apiSenderName =
+            typeof msg.sender === "string" ? msg.sender.trim() : "";
           const senderName =
-            msg.sender ||
+            apiSenderName ||
             senderInfo?.name ||
             (isUser
-              ? "You"
+              ? response.user?.name || "You"
               : sender === "support_agent"
                 ? "Support Agent"
                 : "Provider");
@@ -605,7 +625,9 @@ export default function ChatScreen({
                 }
 
                 const showProfile =
-                  index === 0 || messages[index - 1].sender !== message.sender;
+                  index === 0 ||
+                  messages[index - 1].sender !== message.sender ||
+                  messages[index - 1].senderName !== message.senderName;
 
                 return (
                   <View
@@ -618,15 +640,19 @@ export default function ChatScreen({
                           : styles.providerMessageContainer
                     }
                   >
-                    {(message.sender === "provider" ||
-                      message.sender === "support_agent") &&
-                      showProfile && (
-                        <View style={styles.providerInfoContainer}>
-                          <Text style={styles.senderName}>
-                            {message.senderName}
-                          </Text>
-                        </View>
-                      )}
+                    {showProfile && message.senderName ? (
+                      <View
+                        style={
+                          message.sender === "user"
+                            ? styles.userSenderInfoContainer
+                            : styles.providerInfoContainer
+                        }
+                      >
+                        <Text style={styles.senderName}>
+                          {message.senderName}
+                        </Text>
+                      </View>
+                    ) : null}
                     <TouchableOpacity
                       onLongPress={() => confirmDeleteMessage(message.id)}
                       style={
@@ -854,6 +880,11 @@ const styles = StyleSheet.create({
   providerInfoContainer: {
     marginBottom: vs(4),
     width: "100%",
+  },
+  userSenderInfoContainer: {
+    marginBottom: vs(4),
+    width: "100%",
+    alignItems: "flex-end",
   },
   supportAgentMessage: {
     backgroundColor: Colors.gray100,
