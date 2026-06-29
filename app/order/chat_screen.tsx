@@ -377,16 +377,14 @@ export default function ChatScreen({
       setIsLoading(true);
     }
 
-    const resolvedToId = chatToId ?? toIdRef.current ?? "0";
     const resolvedProvider = chatProvider ?? providerInfo;
     const customerUserId =
       customerUserIdRef.current || normalizeStoredId(userIdParam);
 
     const formData = new FormData();
-    formData.append("type", "getchat");
+    formData.append("type", "checkmsg");
     formData.append("user_id", customerUserId);
     formData.append("order_id", normalizeStoredId(orderIdParam));
-    formData.append("to_id", resolvedToId);
 
     try {
       const response = await apiCall(formData);
