@@ -120,15 +120,6 @@ type ChatScreenProps = {
   supportRefreshSignal?: number;
 };
 
-<<<<<<< HEAD
-const parseStoredId = (id: string | null): string | null => {
-  if (!id) return null;
-  try {
-    return String(JSON.parse(id));
-  } catch {
-    return id.replace(/^"|"$/g, "");
-  }
-=======
 const normalizeStoredId = (value?: string | number | null): string => {
   if (value == null) return "";
   let id = String(value).trim();
@@ -153,7 +144,6 @@ const isSupportAgentMessage = (
   const label = senderLabel.trim();
   if (!label) return false;
   return /support/i.test(label) && !/service agent/i.test(label);
->>>>>>> a6cccc9 (code push)
 };
 
 export default function ChatScreen({
@@ -222,17 +212,6 @@ export default function ChatScreen({
   useFocusEffect(
     useCallback(() => {
       const init = async () => {
-<<<<<<< HEAD
-        const storedOrderId = parseStoredId(
-          await AsyncStorage.getItem("order_id"),
-        );
-        const storedUserId = await AsyncStorage.getItem("user_id");
-        setOrderId(storedOrderId);
-        setUserId(storedUserId);
-        if (storedOrderId && storedUserId) {
-          fetchOrderDetails(storedOrderId);
-          fetchChatHistory(storedOrderId, storedUserId);
-=======
         const storedOrderId = normalizeStoredId(
           await AsyncStorage.getItem("order_id"),
         );
@@ -251,7 +230,6 @@ export default function ChatScreen({
             orderMeta?.toId,
             orderMeta?.provider,
           );
->>>>>>> a6cccc9 (code push)
 
           // Set up interval to fetch new messages every few seconds
           if (intervalRef.current) {
@@ -259,11 +237,6 @@ export default function ChatScreen({
           }
 
           intervalRef.current = setInterval(() => {
-<<<<<<< HEAD
-            if (storedOrderId && storedUserId) {
-              fetchOrderDetails(storedOrderId);
-              fetchChatHistory(storedOrderId, storedUserId, false); // Pass false to not show loading indicator
-=======
             if (storedOrderId && userId) {
               void (async () => {
                 const meta = await fetchOrderDetails(storedOrderId);
@@ -276,7 +249,6 @@ export default function ChatScreen({
                   meta?.provider,
                 );
               })();
->>>>>>> a6cccc9 (code push)
             }
           }, 10000);
         }
@@ -295,7 +267,8 @@ export default function ChatScreen({
 
   const fetchOrderDetails = async (orderIdParam: string) => {
     try {
-      const normalizedOrderId = parseStoredId(orderIdParam) ?? orderIdParam;
+      const normalizedOrderId =
+        normalizeStoredId(orderIdParam) || orderIdParam;
       const formData = new FormData();
       formData.append("type", "get_data");
       formData.append("table_name", "orders");
@@ -404,16 +377,6 @@ export default function ChatScreen({
       setIsLoading(true);
     }
 
-<<<<<<< HEAD
-    const normalizedOrderId = parseStoredId(orderIdParam) ?? orderIdParam;
-    const normalizedUserId = parseStoredId(userIdParam) ?? userIdParam;
-
-    const formData = new FormData();
-    formData.append("type", "getchat");
-    formData.append("user_id", normalizedUserId);
-    formData.append("order_id", normalizedOrderId);
-    formData.append("to_id", toId);
-=======
     const resolvedToId = chatToId ?? toIdRef.current ?? "0";
     const resolvedProvider = chatProvider ?? providerInfo;
     const customerUserId =
@@ -424,19 +387,10 @@ export default function ChatScreen({
     formData.append("user_id", customerUserId);
     formData.append("order_id", normalizeStoredId(orderIdParam));
     formData.append("to_id", resolvedToId);
->>>>>>> a6cccc9 (code push)
 
     try {
       const response = await apiCall(formData);
       console.log("chat history", response);
-<<<<<<< HEAD
-      if (response && response.chat) {
-        const customerId =
-          normalizedUserId ||
-          response.user?.id ||
-          response.user?.user_id;
-=======
->>>>>>> a6cccc9 (code push)
 
       if (response && Array.isArray(response.chat)) {
         if (response.user) {
@@ -447,47 +401,12 @@ export default function ChatScreen({
         }
 
         const formattedMessages = response.chat.map((msg: any) => {
-<<<<<<< HEAD
-          const isUser = String(msg.from_id) === String(customerId);
-          const isSupportAgent =
-            msg.support === "1" ||
-            msg.support === 1 ||
-            msg.user_type === "support_agent" ||
-            msg.role === "support_agent";
-
-          let sender: "user" | "provider" | "support_agent" = "provider";
-          let senderInfo: { name?: string; image?: string | null } | null =
-            response.provider ?? null;
-
-          if (isUser) {
-            sender = "user";
-            senderInfo = response.user;
-          } else if (isSupportAgent) {
-            sender = "support_agent";
-            senderInfo = {
-              name: msg.sender || "Support Agent",
-              image: null,
-            };
-          }
-
-          const apiSenderName =
-            typeof msg.sender === "string" ? msg.sender.trim() : "";
-          const senderName =
-            apiSenderName ||
-            senderInfo?.name ||
-            (isUser
-              ? response.user?.name || "You"
-              : sender === "support_agent"
-                ? "Support Agent"
-                : "Provider");
-=======
           const { sender, senderName, senderImage } = resolveMessageSender(
             msg,
             customerUserId,
             response.provider ?? resolvedProvider,
             providerUserIdRef.current,
           );
->>>>>>> a6cccc9 (code push)
 
           return {
             id: String(msg.id),
@@ -607,7 +526,7 @@ export default function ChatScreen({
       formData.append("type", "sendmsg");
       formData.append("user_id", userId);
       formData.append("to_id", toIdRef.current || "0");
-      formData.append("order_id", orderId);
+      formData.append("order_id", normalizeStoredId(orderId));
 
       // Determine message type and content based on attachment
       const msgType = attachment ? "file" : "msg";
