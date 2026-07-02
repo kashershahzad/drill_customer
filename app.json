@@ -2,16 +2,19 @@
   "expo": {
     "name": "Drill Customer",
     "slug": "drill-customer",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/appLogo.png",
     "scheme": "drillcustomer",
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "sa.com.drill.app",
+      "buildNumber": "4",
       "supportsTablet": false,
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
+        "NSCameraUsageDescription": "Drill Customer uses the camera so you can take photos for your profile picture and to send images in chat with your service provider during a booking.",
+        "NSPhotoLibraryUsageDescription": "Drill Customer uses your photo library so you can choose existing photos for your profile picture and to send images in chat with your service provider during a booking.",
         "NSLocationWhenInUseUsageDescription": "Your location is used to show your position on the map when you choose a service address and to send that address to the service provider for your booking. For example, when you book a home service, we use your location to display and confirm the address on the map and to share it with the provider so they can reach you.",
         "UIBackgroundModes": [
           "remote-notification"
@@ -19,6 +22,9 @@
       },
       "entitlements": {
         "aps-environment": "production"
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyAQiilQ_i4LRPFyMhfLB5ZT3UGMTIxqL0Y"
       }
     },
     "android": {

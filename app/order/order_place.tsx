@@ -22,8 +22,6 @@ import { OrderType } from "~/types/dataTypes";
 import { apiCall } from "~/utils/api";
 import { calculateDistance } from "~/utils/distance";
 import {
-  getFCMToken,
-  requestFCMPermission,
   setupNotificationListeners,
 } from "~/utils/notification";
 import { ms, s, vs } from "~/utils/responsive";
@@ -447,15 +445,6 @@ const OrderPlace: React.FC = () => {
   };
 
   useEffect(() => {
-    const initFCM = async () => {
-      try {
-        await requestFCMPermission();
-        await getFCMToken();
-      } catch (error) {
-        console.error("Error initializing FCM:", error);
-      }
-    };
-
     const handleNotificationPress = async (data: NotificationData) => {
       if (!data?.order_id) return;
 
@@ -476,8 +465,19 @@ const OrderPlace: React.FC = () => {
       );
     };
 
-    initFCM();
-    const unsubscribe = setupNotificationListeners(handleNotificationPress);
+    const unsubscribe = setupNotificationListeners(
+      handleNotificationPress,
+      (payload) => {
+        const message =
+          payload.body ||
+          payload.data?.message ||
+          payload.title ||
+          payload.data?.title;
+        if (message) {
+          showToast(message, "info");
+        }
+      },
+    );
     return () => {
       unsubscribe();
     };

@@ -400,27 +400,29 @@ export default function ChatScreen({
           setProviderInfo(response.provider);
         }
 
-        const formattedMessages = response.chat.map((msg: any) => {
-          const { sender, senderName, senderImage } = resolveMessageSender(
-            msg,
-            customerUserId,
-            response.provider ?? resolvedProvider,
-            providerUserIdRef.current,
-          );
+        const formattedMessages = response.chat
+          .map((msg: any) => {
+            const { sender, senderName, senderImage } = resolveMessageSender(
+              msg,
+              customerUserId,
+              response.provider ?? resolvedProvider,
+              providerUserIdRef.current,
+            );
 
-          return {
-            id: String(msg.id),
-            text: msg.msg,
-            sender,
-            timestamp: Number(msg.datetime) || Date.now(),
-            msgType: msg.msg_type === "file" ? "file" : "msg",
-            senderName,
-            senderImage,
-          };
-        });
+            return {
+              id: String(msg.id),
+              text: msg.msg,
+              sender,
+              timestamp: Number(msg.datetime) || Date.now(),
+              msgType: msg.msg_type === "file" ? "file" : "msg",
+              senderName,
+              senderImage,
+            };
+          })
+          .sort((a: Message, b: Message) => a.timestamp - b.timestamp);
 
-        // Add support agent added system message if support is required
-        let finalMessages = formattedMessages.reverse();
+        // Oldest at top, newest at bottom (API already sends chronological order)
+        let finalMessages = formattedMessages;
         const shouldShowSupportMessage =
           showSupportMessage ?? (supportRequired && hasShownSupportMessage);
         if (shouldShowSupportMessage) {
@@ -714,9 +716,10 @@ export default function ChatScreen({
                 }
 
                 const showProfile =
-                  index === 0 ||
-                  messages[index - 1].sender !== message.sender ||
-                  messages[index - 1].senderName !== message.senderName;
+                  message.sender !== "user" &&
+                  (index === 0 ||
+                    messages[index - 1].sender !== message.sender ||
+                    messages[index - 1].senderName !== message.senderName);
 
                 return (
                   <View
@@ -754,7 +757,11 @@ export default function ChatScreen({
                     >
                       {message.msgType === "file" && (
                         <Image
-                          source={{ uri: `${IMAGE_BASE_URL}${message.text}` }}
+                          source={{
+                            uri: message.text.startsWith("http")
+                              ? message.text
+                              : `${IMAGE_BASE_URL}${message.text}`,
+                          }}
                           style={styles.messageImage}
                           resizeMode="cover"
                         />

@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { I18nextProvider } from "react-i18next";
 import { I18nManager } from "react-native";
 import { ToastProvider } from "../components/ToastProvider";
+import OrderNotificationHandler from "../components/OrderNotificationHandler";
 import { AuthProvider } from "../contexts/AuthContext";
 import i18n from "../utils/config";
 
@@ -40,6 +41,7 @@ export default function RootLayout() {
     <I18nextProvider i18n={i18n}>
       <AuthProvider>
         <ToastProvider>
+          <OrderNotificationHandler />
           <Stack screenOptions={{ headerShown: false }} />
         </ToastProvider>
       </AuthProvider>

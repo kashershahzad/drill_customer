@@ -19,8 +19,7 @@ import { FONTS } from "~/constants/Fonts";
 import { useAuth } from "~/contexts/AuthContext";
 import { getDeviceCoordinates } from "~/utils/location";
 import {
-  registerDeviceWithBackend,
-  requestFCMPermission,
+  initializePushNotifications,
   setupNotificationListeners,
 } from "~/utils/notification";
 import { ms, s, vs } from "~/utils/responsive";
@@ -38,11 +37,7 @@ export default function AccessLocation() {
           return;
         }
 
-        await registerDeviceWithBackend(userId);
-        const permissionGranted = await requestFCMPermission();
-        if (permissionGranted) {
-          await registerDeviceWithBackend(userId);
-        }
+        await initializePushNotifications(userId);
       } catch (error) {
         console.error("Error setting up notifications:", error);
       }

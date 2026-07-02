@@ -473,7 +473,7 @@ export default function Track() {
           <MapView
             ref={mapRef}
             style={styles.map}
-            provider={PROVIDER_GOOGLE}
+            provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
             initialRegion={mapInitialRegion}
             showsUserLocation={true}
             showsMyLocationButton={false}
