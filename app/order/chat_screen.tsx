@@ -229,6 +229,7 @@ export default function ChatScreen({
             undefined,
             orderMeta?.toId,
             orderMeta?.provider,
+            orderMeta?.providerUserId,
           );
 
           // Set up interval to fetch new messages every few seconds
@@ -247,6 +248,7 @@ export default function ChatScreen({
                   undefined,
                   meta?.toId,
                   meta?.provider,
+                  meta?.providerUserId,
                 );
               })();
             }
@@ -275,7 +277,7 @@ export default function ChatScreen({
       formData.append("id", normalizedOrderId);
 
       const response = await apiCall(formData);
-      console.log("order details", response);
+      // console.log("order details", response);
       if (response && response.data && response.data.length > 0) {
         const orderData = response.data[0];
         const resolvedToId = normalizeStoredId(orderData.to_id ?? "0");
@@ -372,7 +374,12 @@ export default function ChatScreen({
     showLoading = true,
     showSupportMessage?: boolean,
     chatToId?: string,
-    chatProvider?: { name?: string; image?: string | null } | null,
+    chatProvider?: {
+      id?: string | number;
+      name?: string;
+      image?: string | null;
+    } | null,
+    chatProviderId?: string,
   ) => {
     if (showLoading) {
       setIsLoading(true);
@@ -386,7 +393,6 @@ export default function ChatScreen({
     formData.append("type", "checkmsg");
     formData.append("user_id", customerUserId);
     formData.append("order_id", normalizeStoredId(orderIdParam));
-    formData.append("to_id", normalizeStoredId(chatToId));
 
     try {
       const response = await apiCall(formData);
@@ -527,7 +533,11 @@ export default function ChatScreen({
       const formData = new FormData();
       formData.append("type", "sendmsg");
       formData.append("user_id", userId);
-      formData.append("to_id", toIdRef.current || "0");
+      formData.append("to_id", normalizeStoredId(toIdRef.current));
+      formData.append(
+        "provider_id",
+        normalizeStoredId(providerUserIdRef.current),
+      );
       formData.append("order_id", normalizeStoredId(orderId));
 
       // Determine message type and content based on attachment
@@ -550,7 +560,15 @@ export default function ChatScreen({
 
         // Refresh chat history
         if (orderId && userId) {
-          await fetchChatHistory(orderId, userId);
+          await fetchChatHistory(
+            orderId,
+            userId,
+            false,
+            undefined,
+            toIdRef.current,
+            providerInfo,
+            providerUserIdRef.current,
+          );
         }
       }
     } catch (error) {
@@ -659,6 +677,7 @@ export default function ChatScreen({
         true,
         meta?.toId,
         meta?.provider,
+        meta?.providerUserId,
       );
     };
 
