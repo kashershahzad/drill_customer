@@ -44,7 +44,8 @@ type PopupProps = {
   onTipForPayment?: (tipAmount: string) => void | Promise<void>;
   onCompleteToReview?: () => void;
   onOrderUpdated?: () => void | Promise<void>;
-  onExtraDismissed?: () => void | Promise<void>;
+  onExtraAccepted?: () => void | Promise<void>;
+  onExtraRejected?: () => void | Promise<void>;
 };
 
 export default function Popup({
@@ -57,7 +58,8 @@ export default function Popup({
   onTipForPayment,
   onCompleteToReview,
   onOrderUpdated,
-  onExtraDismissed,
+  onExtraAccepted,
+  onExtraRejected,
 }: PopupProps) {
   const { t } = useTranslation();
   const [tipAmount, setTipAmount] = useState("");
@@ -254,9 +256,17 @@ export default function Popup({
     setShowPopup(null);
   };
 
-  const handleExtraDismiss = async () => {
-    if (onExtraDismissed) {
-      await onExtraDismissed();
+  const handleExtraAccept = async () => {
+    if (onExtraAccepted) {
+      await onExtraAccepted();
+      return;
+    }
+    setShowPopup(null);
+  };
+
+  const handleExtraReject = async () => {
+    if (onExtraRejected) {
+      await onExtraRejected();
       return;
     }
     setShowPopup(null);
@@ -479,13 +489,22 @@ export default function Popup({
             onPress={handleComplete}
           />
         ) : type === "extraAdded" ? (
-          <Button
-            title={t("continue")}
-            variant="primary"
-            fullWidth={true}
-            width="100%"
-            onPress={handleExtraDismiss}
-          />
+          <>
+            <Button
+              title={t("popup.reject")}
+              variant="secondary"
+              fullWidth={false}
+              width="34%"
+              onPress={handleExtraReject}
+            />
+            <Button
+              title={t("popup.accept")}
+              variant="primary"
+              fullWidth={false}
+              width="64%"
+              onPress={handleExtraAccept}
+            />
+          </>
         ) : type === "review" ? (
           <Button
             title={t("submit")}

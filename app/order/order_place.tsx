@@ -25,6 +25,18 @@ import {
   setupNotificationListeners,
 } from "~/utils/notification";
 import { ms, s, vs } from "~/utils/responsive";
+import {
+  fetchOrderExtras,
+  getLatestOrderExtra,
+  getLatestPendingOrderExtra,
+  getOrderExtraStorageKey,
+  isPendingOrderExtra,
+  mergeOrderWithExtra,
+  OrderExtra,
+  getOrderExtraActionErrorMessage,
+  isOrderExtraActionSuccessful,
+  respondToOrderExtra,
+} from "~/utils/orderExtra";
 // import { createTapCharge } from "~/utils/tapPayment";
 import { startTapPayment, toTapPreferredPayment } from "~/utils/tapPayment";
 import ChatScreen from "./chat_screen";
@@ -60,21 +72,6 @@ const BLOCKING_POPUP_TYPES = new Set<PopupType>([
   "tipup",
 ]);
 
-const getExtraDetail = (order: OrderType) =>
-  String(order.extra_detail ?? "").trim();
-
-const hasExtraContent = (order: OrderType) => getExtraDetail(order).length > 0;
-
-const getExtraStorageKey = (order: OrderType) => {
-  const orderKey = String(order.id ?? "");
-  const fingerprint = [
-    order.extra_added ?? "",
-    order.extra_amount ?? "",
-    getExtraDetail(order),
-  ].join("|");
-  return `${EXTRA_POPUP_SEEN_PREFIX}${orderKey}_${fingerprint}`;
-};
-
 const OrderPlace: React.FC = () => {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -92,14 +89,22 @@ const OrderPlace: React.FC = () => {
   const [isPayingNow, setIsPayingNow] = useState(false);
   const [manualCompletionFlow, setManualCompletionFlow] = useState(false);
   const [order, setOrder] = useState<OrderType | null>(null);
+  const [orderExtra, setOrderExtra] = useState<OrderExtra | null>(null);
+  const [pendingOrderExtra, setPendingOrderExtra] = useState<OrderExtra | null>(
+    null,
+  );
   const lastShownStatusRef = useRef<string | null>(null);
   const proximityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const orderPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const orderRef = useRef<OrderType | null>(null);
+  const orderExtraRef = useRef<OrderExtra | null>(null);
   const orderIdRef = useRef<string | null>(null);
   const popupTypeRef = useRef<PopupType | null>(null);
   const proximityPopupShownRef = useRef<boolean>(false);
   const pendingExtraStorageKeyRef = useRef<string | null>(null);
+  const pendingOrderExtraRef = useRef<OrderExtra | null>(null);
+  const rejectedExtraKeysRef = useRef<Set<string>>(new Set());
+  const isExtraActionRef = useRef(false);
 
   const POLL_INTERVAL_MS = 5000;
   const TERMINAL_ORDER_STATUSES = ["completed", "cancelled"];
@@ -138,6 +143,10 @@ const OrderPlace: React.FC = () => {
   useEffect(() => {
     orderRef.current = order;
   }, [order]);
+
+  useEffect(() => {
+    orderExtraRef.current = orderExtra;
+  }, [orderExtra]);
 
   useEffect(() => {
     orderIdRef.current = orderId;
@@ -190,7 +199,7 @@ const OrderPlace: React.FC = () => {
     }, []),
   );
 
-  const applyOrderUpdate = (orderData: OrderType) => {
+  const applyOrderUpdate = (orderData: OrderType): boolean => {
     const previousOrder = orderRef.current;
     const previousStatus = normalizeStatus(previousOrder?.status);
     const nextStatus = normalizeStatus(orderData.status);
@@ -240,19 +249,26 @@ const OrderPlace: React.FC = () => {
       stopOrderPolling();
     }
 
-    if (!deferExtraPopup) {
-      void maybeShowExtraPopup(orderData);
-    }
+    return deferExtraPopup;
   };
 
-  const maybeShowExtraPopup = async (orderData: OrderType) => {
-    if (!hasExtraContent(orderData)) return;
+  const maybeShowExtraPopup = async (
+    extra: OrderExtra | null,
+    orderIdParam: string,
+  ) => {
+    if (!isPendingOrderExtra(extra)) return;
 
     const currentPopup = popupTypeRef.current;
     if (currentPopup && BLOCKING_POPUP_TYPES.has(currentPopup)) return;
 
-    const storageKey = getExtraStorageKey(orderData);
+    const storageKey = getOrderExtraStorageKey(
+      orderIdParam,
+      extra!,
+      EXTRA_POPUP_SEEN_PREFIX,
+    );
     try {
+      if (rejectedExtraKeysRef.current.has(storageKey)) return;
+
       const seen = await AsyncStorage.getItem(storageKey);
       if (seen === "1") return;
 
@@ -264,6 +280,8 @@ const OrderPlace: React.FC = () => {
       }
 
       pendingExtraStorageKeyRef.current = storageKey;
+      pendingOrderExtraRef.current = extra;
+      setPendingOrderExtra(extra);
       setPopupType("extraAdded");
     } catch (error) {
       console.warn("[OrderPlace] extra popup check failed:", error);
@@ -284,13 +302,32 @@ const OrderPlace: React.FC = () => {
     formData.append("id", parsedId);
 
     try {
-      const response = await apiCall(formData);
+      const [response, extras] = await Promise.all([
+        apiCall(formData),
+        fetchOrderExtras(parsedId).catch((error) => {
+          console.warn("[OrderPlace] failed to fetch order extras:", error);
+          return [] as OrderExtra[];
+        }),
+      ]);
+
+      const latestExtra = getLatestOrderExtra(extras);
+      const latestPendingExtra = getLatestPendingOrderExtra(extras);
+      setOrderExtra(latestExtra);
+      orderExtraRef.current = latestPendingExtra ?? latestExtra;
+
       console.log("customer rating response", response);
+      console.log("[OrderPlace] order_extra response", extras);
 
       if (response && response.data && response.data.length > 0) {
-        applyOrderUpdate(response.data[0]);
+        const deferExtraPopup = applyOrderUpdate(response.data[0]);
+        if (!deferExtraPopup) {
+          void maybeShowExtraPopup(latestPendingExtra, parsedId);
+        }
         return response.data[0];
       }
+
+      setOrderExtra(null);
+      orderExtraRef.current = null;
 
       if (showLoading) {
         showToast(t("order.noOrderDetailsFound"), "error");
@@ -661,16 +698,27 @@ const OrderPlace: React.FC = () => {
     setPopupType("review");
   };
 
+  const handleExtraPopupDismiss = async () => {
+    const storageKey = pendingExtraStorageKeyRef.current;
+    if (storageKey) {
+      rejectedExtraKeysRef.current.add(storageKey);
+    }
+    await markExtraPopupSeen();
+    setPendingOrderExtra(null);
+    pendingOrderExtraRef.current = null;
+    setPopupType(null);
+  };
+
   const closePopup = () => {
     if (popupType === "extraAdded") {
-      void handleExtraDismissed();
+      void handleExtraPopupDismiss();
       return;
     }
     setPopupType(null);
     setManualCompletionFlow(false);
   };
 
-  const handleExtraDismissed = async () => {
+  const markExtraPopupSeen = async () => {
     const storageKey = pendingExtraStorageKeyRef.current;
     if (storageKey) {
       try {
@@ -680,7 +728,98 @@ const OrderPlace: React.FC = () => {
       }
       pendingExtraStorageKeyRef.current = null;
     }
-    setPopupType(null);
+  };
+
+  const handleExtraAccepted = async () => {
+    if (isExtraActionRef.current) return;
+
+    const parsedOrderId = parseStoredOrderId(orderId) ?? normalizeOrderId(orderId);
+    if (!parsedOrderId) {
+      showToast(t("order.failedToAcceptExtra"), "error");
+      return;
+    }
+
+    const extraId =
+      pendingOrderExtraRef.current?.id ?? orderExtraRef.current?.id;
+    if (!extraId) {
+      showToast(t("order.failedToAcceptExtra"), "error");
+      return;
+    }
+
+    isExtraActionRef.current = true;
+    try {
+      const response = await respondToOrderExtra(
+        parsedOrderId,
+        "accepted",
+        extraId,
+      );
+      if (isOrderExtraActionSuccessful(response)) {
+        await markExtraPopupSeen();
+        setPendingOrderExtra(null);
+        pendingOrderExtraRef.current = null;
+        setPopupType(null);
+        await refreshOrderDetails(parsedOrderId);
+      } else {
+        showToast(
+          getOrderExtraActionErrorMessage(response) ||
+            t("order.failedToAcceptExtra"),
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("[OrderPlace] accept extra failed:", error);
+      showToast(t("order.failedToAcceptExtra"), "error");
+    } finally {
+      isExtraActionRef.current = false;
+    }
+  };
+
+  const handleExtraRejected = async () => {
+    if (isExtraActionRef.current) return;
+
+    const parsedOrderId = parseStoredOrderId(orderId) ?? normalizeOrderId(orderId);
+    if (!parsedOrderId) {
+      showToast(t("order.failedToRejectExtra"), "error");
+      return;
+    }
+
+    const extraId =
+      pendingOrderExtraRef.current?.id ?? orderExtraRef.current?.id;
+    if (!extraId) {
+      showToast(t("order.failedToRejectExtra"), "error");
+      return;
+    }
+
+    isExtraActionRef.current = true;
+    try {
+      const response = await respondToOrderExtra(
+        parsedOrderId,
+        "rejected",
+        extraId,
+      );
+      if (isOrderExtraActionSuccessful(response)) {
+        const storageKey = pendingExtraStorageKeyRef.current;
+        if (storageKey) {
+          rejectedExtraKeysRef.current.add(storageKey);
+        }
+        pendingExtraStorageKeyRef.current = null;
+        setPendingOrderExtra(null);
+        pendingOrderExtraRef.current = null;
+        setPopupType(null);
+        await refreshOrderDetails(parsedOrderId);
+      } else {
+        showToast(
+          getOrderExtraActionErrorMessage(response) ||
+            t("order.failedToRejectExtra"),
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("[OrderPlace] reject extra failed:", error);
+      showToast(t("order.failedToRejectExtra"), "error");
+    } finally {
+      isExtraActionRef.current = false;
+    }
   };
 
   const handleArrivedConfirmed = async () => {
@@ -873,7 +1012,7 @@ const OrderPlace: React.FC = () => {
         </View>
         {activeTab === "Details" ? (
           <OrderDetails
-            order={order}
+            order={mergeOrderWithExtra(order, orderExtra) as OrderType}
             onAddRating={
               order.status?.toLowerCase() === "completed" &&
               Number(order.customer_review?.rating ?? order.rating ?? 0) <= 0
@@ -987,8 +1126,8 @@ const OrderPlace: React.FC = () => {
                 type={popupType}
                 setShowPopup={setPopupType}
                 orderId={orderId || ""}
-                extraAmount={order?.extra_amount}
-                extraDetail={order?.extra_detail}
+                extraAmount={pendingOrderExtra?.amount ?? orderExtra?.amount}
+                extraDetail={pendingOrderExtra?.detail ?? orderExtra?.detail}
                 onCompleted={handleReviewSubmitted}
                 onCompleteToReview={
                   manualCompletionFlow ? handleCompleteToReview : undefined
@@ -999,7 +1138,8 @@ const OrderPlace: React.FC = () => {
                 onOrderUpdated={
                   popupType === "arrived" ? handleArrivedConfirmed : undefined
                 }
-                onExtraDismissed={handleExtraDismissed}
+                onExtraAccepted={handleExtraAccepted}
+                onExtraRejected={handleExtraRejected}
               />
             </View>
           </View>

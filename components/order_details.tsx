@@ -7,6 +7,10 @@ import { ms, s, vs } from "~/utils/responsive";
 import { OrderType } from "~/types/dataTypes";
 import DashedSeparator from "./dashed_seprator";
 import { formatAppTime } from "~/utils/locale";
+import {
+  formatExtraStatusLabel,
+  resolveOrderExtraStatus,
+} from "~/utils/orderExtra";
 
 // Helper function to format timestamp (time only, no date)
 const formatTimestamp = (timestamp: string): string => {
@@ -108,6 +112,12 @@ const OrderDetailsSection = ({ order }: OrderType) => {
 
   // Get timeline events from history
   const timelineEvents = getTimelineEvents(order);
+
+  const extraStatusLabel = formatExtraStatusLabel(
+    resolveOrderExtraStatus(order),
+    t,
+  );
+
   return (
     <View style={styles.orderDetails}>
       <View style={styles.rowBetween}>
@@ -273,16 +283,12 @@ const OrderDetailsSection = ({ order }: OrderType) => {
         </>
       )}
 
-      {/* Extra Accepted - show if extra was added and paid */}
-      {order.extra_detail && order.paid_by && order.paid_by !== "0" && (
+      {/* Extra Status - show when extra was added */}
+      {order.extra_detail && (
         <>
           <View style={styles.rowBetween}>
-            <Text style={styles.grayText}>{t("extraAccepted")}:</Text>
-            <Text style={styles.grayText}>
-              {timelineEvents.find((e) => e.status === "started")?.timestamp ||
-                order.timestamp ||
-                ""}
-            </Text>
+            <Text style={styles.grayText}>{t("extraStatus")}:</Text>
+            <Text style={styles.grayText}>{extraStatusLabel}</Text>
           </View>
           <DashedSeparator />
         </>

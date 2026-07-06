@@ -4,7 +4,8 @@ import Smile from "@/assets/svgs/smile.svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import ExtraChatBubble from "@/components/ExtraChatBubble";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -28,6 +29,14 @@ import {
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
+import {
+  extraToChatMessage,
+  getOrderExtraActionErrorMessage,
+  isOrderExtraActionSuccessful,
+  OrderExtra,
+  respondToOrderExtra,
+  syncOrderExtrasForChat,
+} from "~/utils/orderExtra";
 import { ms, s, vs } from "~/utils/responsive";
 
 // Define a simpler emoji picker array instead of using the library
@@ -114,10 +123,14 @@ interface Message {
   userId?: any;
   senderName?: string;
   senderImage?: string;
+  extraData?: OrderExtra;
 }
 
 type ChatScreenProps = {
   supportRefreshSignal?: number;
+  orderId: string;
+  chatToId: string;
+  viewerRole: "customer";
 };
 
 const normalizeStoredId = (value?: string | number | null): string => {
@@ -155,6 +168,11 @@ export default function ChatScreen({
   const providerUserIdRef = useRef<string>("");
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [orderExtras, setOrderExtras] = useState<OrderExtra[]>([]);
+  const [imageBaseUrl, setImageBaseUrl] = useState(
+    "https://7tracking.com/saudiservices/images/",
+  );
+  const [updatingExtraId, setUpdatingExtraId] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEmojiPickerVisible, setIsEmojiPickerVisible] = useState(false);
@@ -171,6 +189,7 @@ export default function ChatScreen({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const isSendingRef = useRef<boolean>(false);
+  const orderIdRef = useRef<string | null>(null);
   const keyboardVisibleRef = useRef(false);
   const scrollPendingRef = useRef(false);
   const IMAGE_BASE_URL = "https://7tracking.com/saudiservices/images/";
@@ -217,6 +236,7 @@ export default function ChatScreen({
         );
         const userId = normalizeStoredId(await AsyncStorage.getItem("user_id"));
         setOrderId(storedOrderId);
+        orderIdRef.current = storedOrderId;
         setUserId(userId);
         customerUserIdRef.current = userId;
 
@@ -298,6 +318,16 @@ export default function ChatScreen({
           setProviderInfo(orderData.provider);
         }
 
+        if (orderData.image_url) {
+          setImageBaseUrl(String(orderData.image_url));
+        }
+
+        const extras = await syncOrderExtrasForChat(
+          normalizedOrderId,
+          orderData,
+        );
+        setOrderExtras(extras);
+
         const isSupportRequired =
           orderData.support_required === "1" ||
           orderData.support_required === 1;
@@ -322,6 +352,53 @@ export default function ChatScreen({
 
     return null;
   };
+
+  const handleExtraStatus = async (
+    extraId: string,
+    status: "accepted" | "rejected",
+  ) => {
+    const currentOrderId = orderIdRef.current;
+    if (!currentOrderId || updatingExtraId) return;
+
+    try {
+      setUpdatingExtraId(extraId);
+      const response = await respondToOrderExtra(
+        currentOrderId,
+        status,
+        extraId,
+      );
+
+      if (isOrderExtraActionSuccessful(response)) {
+        const extras = await syncOrderExtrasForChat(currentOrderId);
+        setOrderExtras(extras);
+      } else {
+        Alert.alert(
+          t("error"),
+          getOrderExtraActionErrorMessage(response) ||
+            (status === "accepted"
+              ? t("order.failedToAcceptExtra")
+              : t("order.failedToRejectExtra")),
+        );
+      }
+    } catch (error) {
+      console.error("Failed to update extra status", error);
+      Alert.alert(
+        t("error"),
+        status === "accepted"
+          ? t("order.failedToAcceptExtra")
+          : t("order.failedToRejectExtra"),
+      );
+    } finally {
+      setUpdatingExtraId(null);
+    }
+  };
+
+  const displayMessages = useMemo(() => {
+    const extraMessages = orderExtras.map((extra) => extraToChatMessage(extra));
+    return [...messages, ...extraMessages].sort(
+      (a, b) => a.timestamp - b.timestamp,
+    );
+  }, [messages, orderExtras]);
 
   const resolveMessageSender = (
     msg: {
@@ -700,7 +777,7 @@ export default function ChatScreen({
 
   useEffect(() => {
     scheduleScrollToEnd(true);
-  }, [messages, scheduleScrollToEnd]);
+  }, [displayMessages, scheduleScrollToEnd]);
 
   return (
     <KeyboardAvoidingView
@@ -716,8 +793,8 @@ export default function ChatScreen({
           contentContainerStyle={styles.scrollViewContent}
           keyboardShouldPersistTaps="handled"
         >
-          {messages && messages.length > 0
-            ? messages.map((message, index) => {
+          {displayMessages && displayMessages.length > 0
+            ? displayMessages.map((message, index) => {
                 // Handle system messages (Support Agent Added)
                 if (message.sender === "system") {
                   return (
@@ -734,11 +811,36 @@ export default function ChatScreen({
                   );
                 }
 
+                if (message.msgType === "extra" && message.extraData) {
+                  return (
+                    <View
+                      key={message.id}
+                      style={styles.extraMessageContainer}
+                    >
+                      <ExtraChatBubble
+                        extra={message.extraData}
+                        imageBaseUrl={imageBaseUrl}
+                        customerUserId={customerUserIdRef.current}
+                        providerUserId={providerUserIdRef.current}
+                        onAccept={(extraId) =>
+                          void handleExtraStatus(extraId, "accepted")
+                        }
+                        onReject={(extraId) =>
+                          void handleExtraStatus(extraId, "rejected")
+                        }
+                        isUpdating={updatingExtraId === message.extraData?.id}
+                        t={t}
+                      />
+                    </View>
+                  );
+                }
+
                 const showProfile =
                   message.sender !== "user" &&
                   (index === 0 ||
-                    messages[index - 1].sender !== message.sender ||
-                    messages[index - 1].senderName !== message.senderName);
+                    displayMessages[index - 1].sender !== message.sender ||
+                    displayMessages[index - 1].senderName !==
+                      message.senderName);
 
                 return (
                   <View
@@ -966,6 +1068,14 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: vs(10),
     maxWidth: "80%",
+  },
+  extraMessageContainer: {
+    flexDirection: "column",
+    alignSelf: "flex-start",
+    alignItems: "flex-start",
+    marginBottom: vs(10),
+    maxWidth: "94%",
+    width: "94%",
   },
   supportAgentMessageContainer: {
     flexDirection: "column",
