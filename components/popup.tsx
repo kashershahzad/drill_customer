@@ -31,26 +31,33 @@ type PopupType =
   | "arrived"
   | "on-way"
   | "completed"
-  | "time-up";
+  | "time-up"
+  | "extraAdded";
 
 type PopupProps = {
   setShowPopup: React.Dispatch<React.SetStateAction<PopupType | null>>;
   type: PopupType;
   orderId: string;
+  extraAmount?: string;
+  extraDetail?: string;
   onCompleted?: () => void;
   onTipForPayment?: (tipAmount: string) => void | Promise<void>;
   onCompleteToReview?: () => void;
   onOrderUpdated?: () => void | Promise<void>;
+  onExtraDismissed?: () => void | Promise<void>;
 };
 
 export default function Popup({
   setShowPopup,
   type,
   orderId,
+  extraAmount,
+  extraDetail,
   onCompleted,
   onTipForPayment,
   onCompleteToReview,
   onOrderUpdated,
+  onExtraDismissed,
 }: PopupProps) {
   const { t } = useTranslation();
   const [tipAmount, setTipAmount] = useState("");
@@ -247,6 +254,14 @@ export default function Popup({
     setShowPopup(null);
   };
 
+  const handleExtraDismiss = async () => {
+    if (onExtraDismissed) {
+      await onExtraDismissed();
+      return;
+    }
+    setShowPopup(null);
+  };
+
   const ratingText = [
     t("popup.poor"),
     t("popup.fair"),
@@ -357,6 +372,29 @@ export default function Popup({
               {t("popup.orderCompletedDescription")}
             </Text>
           </>
+        ) : type === "extraAdded" ? (
+          <>
+            <Text style={styles.title}>{t("popup.extraAddedTitle")}</Text>
+            <Text style={styles.description}>
+              {t("popup.extraAddedDescription")}
+            </Text>
+            {extraAmount ? (
+              <Text style={styles.extraRow}>
+                <Text style={styles.extraLabel}>
+                  {t("popup.extraAmountLabel")}:{" "}
+                </Text>
+                <Text style={styles.extraValue}>SAR {extraAmount}</Text>
+              </Text>
+            ) : null}
+            {extraDetail ? (
+              <Text style={styles.extraRow}>
+                <Text style={styles.extraLabel}>
+                  {t("popup.extraDescriptionLabel")}:{" "}
+                </Text>
+                <Text style={styles.extraValue}>{extraDetail}</Text>
+              </Text>
+            ) : null}
+          </>
         ) : type === "review" ? (
           <>
             <Text style={styles.title}>{t("popup.rateExperience")}</Text>
@@ -440,6 +478,14 @@ export default function Popup({
             width="100%"
             onPress={handleComplete}
           />
+        ) : type === "extraAdded" ? (
+          <Button
+            title={t("continue")}
+            variant="primary"
+            fullWidth={true}
+            width="100%"
+            onPress={handleExtraDismiss}
+          />
         ) : type === "review" ? (
           <Button
             title={t("submit")}
@@ -504,6 +550,21 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: vs(14),
     paddingHorizontal: s(10),
+  },
+  extraRow: {
+    textAlign: "center",
+    marginBottom: vs(8),
+    paddingHorizontal: s(10),
+  },
+  extraLabel: {
+    color: Colors.secondary,
+    fontSize: ms(16),
+    fontFamily: FONTS.bold,
+  },
+  extraValue: {
+    color: Colors.secondary,
+    fontSize: ms(16),
+    fontFamily: FONTS.regular,
   },
   input: {
     ...inputFieldStyles.field,

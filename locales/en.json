@@ -390,7 +390,11 @@
     "fair": "Fair",
     "good": "Good",
     "veryGood": "Very Good",
-    "excellent": "Excellent"
+    "excellent": "Excellent",
+    "extraAddedTitle": "Extra Added",
+    "extraAddedDescription": "Your service provider has added extra charges to this order. Please review the details below.",
+    "extraAmountLabel": "Extra amount",
+    "extraDescriptionLabel": "Description"
   },
   "packages": {
     "packages": "Packages",

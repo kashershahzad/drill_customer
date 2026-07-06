@@ -18,6 +18,8 @@ export type OrderType = {
   arrival_confirm?: string;
   work_started?: string;
   extra_added?: string;
+  extra_amount?: string;
+  extra_detail?: string;
   insulation_sheet?: string;
   item_image?: string;
   bill_image?: string;

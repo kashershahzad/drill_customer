@@ -390,7 +390,11 @@
     "fair": "مقبول",
     "good": "جيد",
     "veryGood": "جيد جداً",
-    "excellent": "ممتاز"
+    "excellent": "ممتاز",
+    "extraAddedTitle": "تمت إضافة إضافات",
+    "extraAddedDescription": "أضاف مقدم الخدمة رسوماً إضافية على هذا الطلب. يرجى مراجعة التفاصيل أدناه.",
+    "extraAmountLabel": "المبلغ الإضافي",
+    "extraDescriptionLabel": "الوصف"
   },
   "packages": {
     "packages": "الباقات",
