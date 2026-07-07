@@ -1,11 +1,17 @@
 import Add from "@/assets/svgs/plus.svg";
 import Send from "@/assets/svgs/send.svg";
 import Smile from "@/assets/svgs/smile.svg";
+import ExtraChatBubble from "@/components/ExtraChatBubble";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "expo-router";
-import ExtraChatBubble from "@/components/ExtraChatBubble";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -166,6 +172,7 @@ export default function ChatScreen({
   const toIdRef = useRef<string>("");
   const customerUserIdRef = useRef<string>("");
   const providerUserIdRef = useRef<string>("");
+  const authTokenRef = useRef<string>("");
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [orderExtras, setOrderExtras] = useState<OrderExtra[]>([]);
@@ -235,10 +242,14 @@ export default function ChatScreen({
           await AsyncStorage.getItem("order_id"),
         );
         const userId = normalizeStoredId(await AsyncStorage.getItem("user_id"));
+        const authToken = normalizeStoredId(
+          (await AsyncStorage.getItem("token")) || userId,
+        );
         setOrderId(storedOrderId);
         orderIdRef.current = storedOrderId;
         setUserId(userId);
         customerUserIdRef.current = userId;
+        authTokenRef.current = authToken;
 
         if (storedOrderId && userId) {
           const orderMeta = await fetchOrderDetails(storedOrderId);
@@ -289,8 +300,7 @@ export default function ChatScreen({
 
   const fetchOrderDetails = async (orderIdParam: string) => {
     try {
-      const normalizedOrderId =
-        normalizeStoredId(orderIdParam) || orderIdParam;
+      const normalizedOrderId = normalizeStoredId(orderIdParam) || orderIdParam;
       const formData = new FormData();
       formData.append("type", "get_data");
       formData.append("table_name", "orders");
@@ -407,7 +417,11 @@ export default function ChatScreen({
       sender?: string | null;
     },
     customerUserId: string,
-    provider?: { id?: string | number; name?: string; image?: string | null } | null,
+    provider?: {
+      id?: string | number;
+      name?: string;
+      image?: string | null;
+    } | null,
     providerUserId = "",
   ): {
     sender: "user" | "provider" | "support_agent";
@@ -468,7 +482,7 @@ export default function ChatScreen({
 
     const formData = new FormData();
     formData.append("type", "checkmsg");
-    formData.append("user_id", customerUserId);
+    formData.append("token", authTokenRef.current || customerUserId);
     formData.append("order_id", normalizeStoredId(orderIdParam));
 
     try {
@@ -556,14 +570,15 @@ export default function ChatScreen({
 
   const uploadImageToServer = async (imageUri: string) => {
     try {
-      if (!userId) throw new Error("User ID not found");
+      const token = authTokenRef.current || userId;
+      if (!token) throw new Error("Auth token not found");
 
       const uriParts = imageUri.split(".");
       const fileType = uriParts[uriParts.length - 1];
 
       const formData = new FormData();
       formData.append("type", "upload_data");
-      formData.append("user_id", userId);
+      formData.append("user_id", token);
       formData.append("file", {
         uri: imageUri,
         name: `profile.${fileType}`,
@@ -589,7 +604,11 @@ export default function ChatScreen({
       return;
     }
 
-    if (!orderId || !userId || (inputMessage.trim() === "" && !attachment))
+    if (
+      !orderId ||
+      (!authTokenRef.current && !userId) ||
+      (inputMessage.trim() === "" && !attachment)
+    )
       return;
 
     try {
@@ -607,9 +626,12 @@ export default function ChatScreen({
         }
       }
 
+      const token = authTokenRef.current || userId;
+      if (!token) return;
+
       const formData = new FormData();
       formData.append("type", "sendmsg");
-      formData.append("user_id", userId);
+      formData.append("user_id", token);
       formData.append("to_id", normalizeStoredId(toIdRef.current));
       formData.append(
         "provider_id",
@@ -672,9 +694,12 @@ export default function ChatScreen({
 
   const deleteMessage = async (messageId: string, userIdParam: string) => {
     try {
+      const token = authTokenRef.current || userIdParam;
+      if (!token) return;
+
       const formData = new FormData();
       formData.append("type", "delete_chat");
-      formData.append("user_id", userIdParam);
+      formData.append("token", token);
       formData.append("id", messageId);
 
       const response = await apiCall(formData);
@@ -813,10 +838,7 @@ export default function ChatScreen({
 
                 if (message.msgType === "extra" && message.extraData) {
                   return (
-                    <View
-                      key={message.id}
-                      style={styles.extraMessageContainer}
-                    >
+                    <View key={message.id} style={styles.extraMessageContainer}>
                       <ExtraChatBubble
                         extra={message.extraData}
                         imageBaseUrl={imageBaseUrl}
