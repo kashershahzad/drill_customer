@@ -101,16 +101,54 @@ const OrderPlace: React.FC = () => {
   const orderIdRef = useRef<string | null>(null);
   const popupTypeRef = useRef<PopupType | null>(null);
   const proximityPopupShownRef = useRef<boolean>(false);
+<<<<<<< HEAD
   const pendingExtraStorageKeyRef = useRef<string | null>(null);
   const pendingOrderExtraRef = useRef<OrderExtra | null>(null);
   const rejectedExtraKeysRef = useRef<Set<string>>(new Set());
   const isExtraActionRef = useRef(false);
+=======
+  const completionPopupShownRef = useRef<boolean>(false);
+>>>>>>> ac92e06 (code push)
 
   const POLL_INTERVAL_MS = 5000;
-  const TERMINAL_ORDER_STATUSES = ["completed", "cancelled"];
+  const TERMINAL_ORDER_STATUSES = ["completed", "cancelled", "complete"];
 
   const normalizeStatus = (status?: string | null) =>
     status?.toLowerCase().trim() || "";
+
+  const isOrderCompleted = (orderData: OrderType | null | undefined) => {
+    if (!orderData) return false;
+
+    const status = normalizeStatus(orderData.status);
+    if (status === "completed" || status === "complete") return true;
+    if (orderData.order_completed) return true;
+
+    if (Array.isArray(orderData.history)) {
+      return orderData.history.some(
+        (entry: { status?: string }) =>
+          normalizeStatus(entry.status) === "completed",
+      );
+    }
+
+    return false;
+  };
+
+  const hasCustomerReview = (orderData: OrderType) =>
+    Number(orderData.customer_review?.rating ?? orderData.rating ?? 0) > 0;
+
+  const showOrderCompletePopup = () => {
+    if (completionPopupShownRef.current) return;
+    if (
+      popupTypeRef.current === "orderComplete" ||
+      popupTypeRef.current === "review"
+    ) {
+      return;
+    }
+
+    completionPopupShownRef.current = true;
+    lastShownStatusRef.current = "completed";
+    setPopupType("orderComplete");
+  };
 
   useEffect(() => {
     if (tab) {
@@ -203,7 +241,12 @@ const OrderPlace: React.FC = () => {
     const previousOrder = orderRef.current;
     const previousStatus = normalizeStatus(previousOrder?.status);
     const nextStatus = normalizeStatus(orderData.status);
+<<<<<<< HEAD
     let deferExtraPopup = false;
+=======
+    const wasCompleted = isOrderCompleted(previousOrder);
+    const isCompleted = isOrderCompleted(orderData);
+>>>>>>> ac92e06 (code push)
 
     if (previousOrder && previousStatus !== nextStatus) {
       handleOrderStatusChange(
@@ -222,6 +265,16 @@ const OrderPlace: React.FC = () => {
           ? "arrived"
           : (orderData.status ?? null);
       }
+    }
+
+    if (!wasCompleted && isCompleted) {
+      showOrderCompletePopup();
+    } else if (
+      !previousOrder &&
+      isCompleted &&
+      !hasCustomerReview(orderData)
+    ) {
+      showOrderCompletePopup();
     }
 
     setOrder(orderData);
@@ -245,7 +298,7 @@ const OrderPlace: React.FC = () => {
       stopProximityCheck();
     }
 
-    if (nextStatus && TERMINAL_ORDER_STATUSES.includes(nextStatus)) {
+    if (isCompleted) {
       stopOrderPolling();
     }
 
@@ -352,7 +405,8 @@ const OrderPlace: React.FC = () => {
     const orderData = await fetchOrderDetails(id, true);
     if (
       orderData?.status &&
-      !TERMINAL_ORDER_STATUSES.includes(orderData.status)
+      !TERMINAL_ORDER_STATUSES.includes(normalizeStatus(orderData.status)) &&
+      !isOrderCompleted(orderData)
     ) {
       startOrderPolling(id);
     }
@@ -511,16 +565,10 @@ const OrderPlace: React.FC = () => {
           toastType = "info";
           break;
         case "completed":
+        case "complete":
           message = t("order.serviceCompleted");
           toastType = "success";
-          if (
-            lastShownStatusRef.current !== "completed" &&
-            popupTypeRef.current !== "orderComplete"
-          ) {
-            lastShownStatusRef.current = "completed";
-            setPopupType("orderComplete");
-          }
-          return;
+          break;
         case "cancelled":
           message = t("order.orderCancelled");
           toastType = "warning";
