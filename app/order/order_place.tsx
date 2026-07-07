@@ -101,14 +101,11 @@ const OrderPlace: React.FC = () => {
   const orderIdRef = useRef<string | null>(null);
   const popupTypeRef = useRef<PopupType | null>(null);
   const proximityPopupShownRef = useRef<boolean>(false);
-<<<<<<< HEAD
   const pendingExtraStorageKeyRef = useRef<string | null>(null);
   const pendingOrderExtraRef = useRef<OrderExtra | null>(null);
   const rejectedExtraKeysRef = useRef<Set<string>>(new Set());
   const isExtraActionRef = useRef(false);
-=======
   const completionPopupShownRef = useRef<boolean>(false);
->>>>>>> ac92e06 (code push)
 
   const POLL_INTERVAL_MS = 5000;
   const TERMINAL_ORDER_STATUSES = ["completed", "cancelled", "complete"];
@@ -241,12 +238,9 @@ const OrderPlace: React.FC = () => {
     const previousOrder = orderRef.current;
     const previousStatus = normalizeStatus(previousOrder?.status);
     const nextStatus = normalizeStatus(orderData.status);
-<<<<<<< HEAD
     let deferExtraPopup = false;
-=======
     const wasCompleted = isOrderCompleted(previousOrder);
     const isCompleted = isOrderCompleted(orderData);
->>>>>>> ac92e06 (code push)
 
     if (previousOrder && previousStatus !== nextStatus) {
       handleOrderStatusChange(
