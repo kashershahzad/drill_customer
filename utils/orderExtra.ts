@@ -17,7 +17,9 @@ export type OrderExtra = {
 const normalizeExtraField = (value?: string | number | null) =>
   value == null ? "" : String(value).trim();
 
-export const normalizeOrderExtra = (row: Record<string, unknown>): OrderExtra => ({
+export const normalizeOrderExtra = (
+  row: Record<string, unknown>,
+): OrderExtra => ({
   id: normalizeExtraField(row.id as string | number),
   order_id: normalizeExtraField(row.order_id as string | number),
   detail: normalizeExtraField(row.detail as string),
@@ -53,7 +55,9 @@ export const getOrderExtraStorageKey = (
   return `${prefix}${orderId}_${fingerprint}`;
 };
 
-export const getLatestOrderExtra = (extras: OrderExtra[]): OrderExtra | null => {
+export const getLatestOrderExtra = (
+  extras: OrderExtra[],
+): OrderExtra | null => {
   if (!extras.length) return null;
 
   const sorted = [...extras].sort((a, b) => {
@@ -102,7 +106,9 @@ export const getOrderExtraActionErrorMessage = (
 ): string | null => {
   if (isOrderExtraActionSuccessful(response)) return null;
   if (response && typeof response === "object" && "message" in response) {
-    const message = String((response as Record<string, unknown>).message ?? "").trim();
+    const message = String(
+      (response as Record<string, unknown>).message ?? "",
+    ).trim();
     if (message) return message;
   }
   return null;
@@ -142,6 +148,7 @@ export async function fetchOrderExtras(orderId: string): Promise<OrderExtra[]> {
   formData.append("order_id", String(orderId));
 
   const response = await apiCall(formData);
+  // console.log("order extras", response);
 
   if (!response?.data || !Array.isArray(response.data)) {
     return [];

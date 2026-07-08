@@ -307,7 +307,7 @@ export default function ChatScreen({
       formData.append("id", normalizedOrderId);
 
       const response = await apiCall(formData);
-      // console.log("order details", response);
+      console.log("order detailssssss", response);
       if (response && response.data && response.data.length > 0) {
         const orderData = response.data[0];
         const resolvedToId = normalizeStoredId(orderData.to_id ?? "0");
@@ -487,7 +487,7 @@ export default function ChatScreen({
 
     try {
       const response = await apiCall(formData);
-      console.log("chat history", response);
+      // console.log("chat history", response);
 
       if (response && Array.isArray(response.chat)) {
         if (response.user) {
@@ -638,8 +638,6 @@ export default function ChatScreen({
         normalizeStoredId(providerUserIdRef.current),
       );
       formData.append("order_id", normalizeStoredId(orderId));
-
-      // Determine message type and content based on attachment
       const msgType = attachment ? "file" : "msg";
       formData.append("msg_type", msgType);
 

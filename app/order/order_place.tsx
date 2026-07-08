@@ -21,22 +21,20 @@ import { FONTS } from "~/constants/Fonts";
 import { OrderType } from "~/types/dataTypes";
 import { apiCall } from "~/utils/api";
 import { calculateDistance } from "~/utils/distance";
-import {
-  setupNotificationListeners,
-} from "~/utils/notification";
-import { ms, s, vs } from "~/utils/responsive";
+import { setupNotificationListeners } from "~/utils/notification";
 import {
   fetchOrderExtras,
   getLatestOrderExtra,
   getLatestPendingOrderExtra,
+  getOrderExtraActionErrorMessage,
   getOrderExtraStorageKey,
+  isOrderExtraActionSuccessful,
   isPendingOrderExtra,
   mergeOrderWithExtra,
   OrderExtra,
-  getOrderExtraActionErrorMessage,
-  isOrderExtraActionSuccessful,
   respondToOrderExtra,
 } from "~/utils/orderExtra";
+import { ms, s, vs } from "~/utils/responsive";
 // import { createTapCharge } from "~/utils/tapPayment";
 import { startTapPayment, toTapPreferredPayment } from "~/utils/tapPayment";
 import ChatScreen from "./chat_screen";
@@ -263,11 +261,7 @@ const OrderPlace: React.FC = () => {
 
     if (!wasCompleted && isCompleted) {
       showOrderCompletePopup();
-    } else if (
-      !previousOrder &&
-      isCompleted &&
-      !hasCustomerReview(orderData)
-    ) {
+    } else if (!previousOrder && isCompleted && !hasCustomerReview(orderData)) {
       showOrderCompletePopup();
     }
 
@@ -362,8 +356,8 @@ const OrderPlace: React.FC = () => {
       setOrderExtra(latestExtra);
       orderExtraRef.current = latestPendingExtra ?? latestExtra;
 
-      console.log("customer rating response", response);
-      console.log("[OrderPlace] order_extra response", extras);
+      // console.log("customer rating response", response);
+      // console.log("[OrderPlace] order_extra response", extras);
 
       if (response && response.data && response.data.length > 0) {
         const deferExtraPopup = applyOrderUpdate(response.data[0]);
@@ -653,7 +647,7 @@ const OrderPlace: React.FC = () => {
       if (isPayingNow || !orderId) return;
 
       if (isCashPayment()) {
-        console.log("[Pay Now] Cash order — skipping Tap payment");
+        // console.log("[Pay Now] Cash order — skipping Tap payment");
         return;
       }
 
@@ -666,15 +660,15 @@ const OrderPlace: React.FC = () => {
         const amount = parseFloat(order?.amount || "0");
         const tipAmount = parseFloat(tipAmountStr || "0");
 
-        console.log(
-          "[Pay Now] Starting Tap payment for order:",
-          parsedOrderId,
-          {
-            amount,
-            tipAmount,
-            total: amount + tipAmount,
-          },
-        );
+        // console.log(
+        //   "[Pay Now] Starting Tap payment for order:",
+        //   parsedOrderId,
+        //   {
+        //     amount,
+        //     tipAmount,
+        //     total: amount + tipAmount,
+        //   },
+        // );
         // const response = await createTapCharge(
         //   amount,
         //   "SAR",
@@ -766,7 +760,10 @@ const OrderPlace: React.FC = () => {
       try {
         await AsyncStorage.setItem(storageKey, "1");
       } catch (error) {
-        console.warn("[OrderPlace] failed to persist extra popup state:", error);
+        console.warn(
+          "[OrderPlace] failed to persist extra popup state:",
+          error,
+        );
       }
       pendingExtraStorageKeyRef.current = null;
     }
@@ -775,7 +772,8 @@ const OrderPlace: React.FC = () => {
   const handleExtraAccepted = async () => {
     if (isExtraActionRef.current) return;
 
-    const parsedOrderId = parseStoredOrderId(orderId) ?? normalizeOrderId(orderId);
+    const parsedOrderId =
+      parseStoredOrderId(orderId) ?? normalizeOrderId(orderId);
     if (!parsedOrderId) {
       showToast(t("order.failedToAcceptExtra"), "error");
       return;
@@ -819,7 +817,8 @@ const OrderPlace: React.FC = () => {
   const handleExtraRejected = async () => {
     if (isExtraActionRef.current) return;
 
-    const parsedOrderId = parseStoredOrderId(orderId) ?? normalizeOrderId(orderId);
+    const parsedOrderId =
+      parseStoredOrderId(orderId) ?? normalizeOrderId(orderId);
     if (!parsedOrderId) {
       showToast(t("order.failedToRejectExtra"), "error");
       return;
