@@ -25,14 +25,16 @@ import { calculateDistance } from "~/utils/distance";
 import { setupNotificationListeners } from "~/utils/notification";
 import {
   fetchOrderExtras,
-  getAcceptedOrderExtrasTotal,
+  getAcceptedOrderExtrasAdjustment,
+  getOrderPayableTotalFromOrder,
   getLatestOrderExtra,
   getLatestPendingOrderExtra,
   getOrderExtraActionErrorMessage,
   getOrderExtraStorageKey,
+  hasOrderExtraContent,
   isOrderExtraActionSuccessful,
   isPendingOrderExtra,
-  mergeOrderWithExtra,
+  mergeOrderWithExtras,
   OrderExtra,
   respondToOrderExtra,
 } from "~/utils/orderExtra";
@@ -90,6 +92,7 @@ const OrderPlace: React.FC = () => {
   const [manualCompletionFlow, setManualCompletionFlow] = useState(false);
   const [order, setOrder] = useState<OrderType | null>(null);
   const [orderExtra, setOrderExtra] = useState<OrderExtra | null>(null);
+  const [allOrderExtras, setAllOrderExtras] = useState<OrderExtra[]>([]);
   const [pendingOrderExtra, setPendingOrderExtra] = useState<OrderExtra | null>(
     null,
   );
@@ -103,7 +106,12 @@ const OrderPlace: React.FC = () => {
   const proximityPopupShownRef = useRef<boolean>(false);
   const pendingExtraStorageKeyRef = useRef<string | null>(null);
   const pendingOrderExtraRef = useRef<OrderExtra | null>(null);
+  const queuedPendingExtraRef = useRef<{
+    extra: OrderExtra;
+    orderId: string;
+  } | null>(null);
   const acceptedExtraTotalRef = useRef(0);
+  const orderExtrasRef = useRef<OrderExtra[]>([]);
   const rejectedExtraKeysRef = useRef<Set<string>>(new Set());
   const isExtraActionRef = useRef(false);
   const completionPopupShownRef = useRef<boolean>(false);
@@ -315,29 +323,34 @@ const OrderPlace: React.FC = () => {
     extra: OrderExtra | null,
     orderIdParam: string,
   ) => {
-    if (!isPendingOrderExtra(extra)) return;
-
-    const currentPopup = popupTypeRef.current;
-    if (currentPopup && BLOCKING_POPUP_TYPES.has(currentPopup)) return;
+    if (!isPendingOrderExtra(extra) || !extra) return;
 
     const storageKey = getOrderExtraStorageKey(
       orderIdParam,
-      extra!,
+      extra,
       EXTRA_POPUP_SEEN_PREFIX,
     );
+
     try {
       if (rejectedExtraKeysRef.current.has(storageKey)) return;
 
       const seen = await AsyncStorage.getItem(storageKey);
       if (seen === "1") return;
 
-      if (
-        popupTypeRef.current &&
-        BLOCKING_POPUP_TYPES.has(popupTypeRef.current)
-      ) {
+      const currentPopup = popupTypeRef.current;
+      if (currentPopup && BLOCKING_POPUP_TYPES.has(currentPopup)) {
+        // Show after the current blocking popup closes (arrived/tip/etc).
+        queuedPendingExtraRef.current = { extra, orderId: orderIdParam };
         return;
       }
 
+      if (currentPopup === "extraAdded") {
+        // Already showing an extra popup — keep the latest pending queued.
+        queuedPendingExtraRef.current = { extra, orderId: orderIdParam };
+        return;
+      }
+
+      queuedPendingExtraRef.current = null;
       pendingExtraStorageKeyRef.current = storageKey;
       pendingOrderExtraRef.current = extra;
       setPendingOrderExtra(extra);
@@ -346,6 +359,24 @@ const OrderPlace: React.FC = () => {
       console.warn("[OrderPlace] extra popup check failed:", error);
     }
   };
+
+  const flushQueuedExtraPopup = () => {
+    const queued = queuedPendingExtraRef.current;
+    if (!queued) return;
+    if (popupTypeRef.current) return;
+    void maybeShowExtraPopup(queued.extra, queued.orderId);
+  };
+
+  useEffect(() => {
+    if (popupType !== null) return;
+
+    // After arrived/tip/review closes, show any pending extra on this screen.
+    const timer = setTimeout(() => {
+      flushQueuedExtraPopup();
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [popupType]);
 
   const fetchOrderDetails = async (id: string, showLoading = false) => {
     const parsedId = parseStoredOrderId(id) ?? id;
@@ -371,7 +402,14 @@ const OrderPlace: React.FC = () => {
 
       const latestExtra = getLatestOrderExtra(extras);
       const latestPendingExtra = getLatestPendingOrderExtra(extras);
-      acceptedExtraTotalRef.current = getAcceptedOrderExtrasTotal(extras);
+      const extrasWithContent = extras.filter(
+        (extra) =>
+          hasOrderExtraContent(extra) ||
+          Boolean(extra.amount) ||
+          Boolean(extra.id),
+      );
+      orderExtrasRef.current = extrasWithContent;
+      setAllOrderExtras(extrasWithContent);
       setOrderExtra(latestExtra);
       orderExtraRef.current = latestPendingExtra ?? latestExtra;
 
@@ -379,15 +417,38 @@ const OrderPlace: React.FC = () => {
       // console.log("[OrderPlace] order_extra response", extras);
 
       if (response && response.data && response.data.length > 0) {
-        const deferExtraPopup = applyOrderUpdate(response.data[0]);
-        if (!deferExtraPopup) {
+        const orderData = response.data[0] as OrderType;
+        const customerId = String(
+          orderData.user?.id || orderData.user_id || userId || "",
+        );
+        const providerId = String(
+          orderData.provider?.id ||
+            orderData.provider_id ||
+            orderData.to_id ||
+            "",
+        );
+        acceptedExtraTotalRef.current = getAcceptedOrderExtrasAdjustment(
+          extras,
+          customerId,
+          providerId,
+        );
+        const deferExtraPopup = applyOrderUpdate(orderData);
+        if (deferExtraPopup && latestPendingExtra) {
+          // Don't drop the extra while arrived/complete popup is showing.
+          queuedPendingExtraRef.current = {
+            extra: latestPendingExtra,
+            orderId: parsedId,
+          };
+        } else {
           void maybeShowExtraPopup(latestPendingExtra, parsedId);
         }
-        return response.data[0];
+        return orderData;
       }
 
       setOrderExtra(null);
       orderExtraRef.current = null;
+      orderExtrasRef.current = [];
+      setAllOrderExtras([]);
       acceptedExtraTotalRef.current = 0;
 
       if (showLoading) {
@@ -533,70 +594,36 @@ const OrderPlace: React.FC = () => {
 
   const showStatusNotification = (
     status: string,
-    customMessage?: string,
+    _customMessage?: string,
     forceShow: boolean = false,
   ) => {
-    let message = customMessage;
-    let toastType = "info";
+    const normalized = normalizeStatus(status);
 
-    if (!message) {
-      switch (status.toLowerCase()) {
-        case "accepted":
-          message = t("order.orderAccepted");
-          toastType = "success";
-          break;
-        case "on_the_way":
-          message = t("order.providerOnWay");
-          toastType = "info";
-          break;
-        case "arrived":
-          if (normalizeStatus(status) !== "arrived") return;
-
-          message = t("order.providerArrived");
-          toastType = "success";
-          if (
-            forceShow ||
-            (lastShownStatusRef.current !== "arrived" &&
-              popupTypeRef.current !== "arrived")
-          ) {
-            lastShownStatusRef.current = "arrived";
-            setPopupType("arrived");
-            showToast(message, toastType as any);
-          }
-          return;
-        case "started":
-          message = t("order.serviceStarted");
-          toastType = "info";
-          break;
-        case "in_progress":
-          message = t("order.serviceInProgress");
-          toastType = "info";
-          break;
-        case "completed":
-        case "complete":
-          message = t("order.serviceCompleted");
-          toastType = "success";
-          break;
-        case "cancelled":
-          message = t("order.orderCancelled");
-          toastType = "warning";
-          break;
-        case "time_up":
-          if (
-            lastShownStatusRef.current !== "time_up" &&
-            popupTypeRef.current !== "time-up"
-          ) {
-            lastShownStatusRef.current = "time_up";
-            setPopupType("time-up");
-          }
-          return;
-        default:
-          message = `${t("order.orderStatusUpdated")} ${status}`;
-          toastType = "info";
+    if (normalized === "arrived") {
+      if (
+        forceShow ||
+        (lastShownStatusRef.current !== "arrived" &&
+          popupTypeRef.current !== "arrived")
+      ) {
+        lastShownStatusRef.current = "arrived";
+        setPopupType("arrived");
       }
+      return;
     }
 
-    showToast(message, toastType as any);
+    if (normalized === "time_up") {
+      if (
+        lastShownStatusRef.current !== "time_up" &&
+        popupTypeRef.current !== "time-up"
+      ) {
+        lastShownStatusRef.current = "time_up";
+        setPopupType("time-up");
+      }
+      return;
+    }
+
+    // Status updates rely on polling/UI — no top toast banners.
+    lastShownStatusRef.current = normalized || lastShownStatusRef.current;
   };
 
   useEffect(() => {
@@ -611,32 +638,46 @@ const OrderPlace: React.FC = () => {
       await refreshOrderDetails(incomingOrderId);
 
       const liveStatus = normalizeStatus(orderRef.current?.status);
-      if (!data.status || normalizeStatus(data.status) !== liveStatus) return;
+      const notifiedStatus = normalizeStatus(data.status);
 
-      showStatusNotification(
-        data.status,
-        data.message,
-        liveStatus === "arrived",
-      );
+      if (notifiedStatus === "arrived" || liveStatus === "arrived") {
+        showStatusNotification("arrived", undefined, true);
+        return;
+      }
+
+      if (!data.status || notifiedStatus !== liveStatus) return;
+
+      showStatusNotification(data.status, data.message, false);
     };
 
     const unsubscribe = setupNotificationListeners(
       handleNotificationPress,
       (payload) => {
-        const message =
-          payload.body ||
-          payload.data?.message ||
-          payload.title ||
-          payload.data?.title;
-        if (message) {
-          showToast(message, "info");
+        const notifiedStatus = normalizeStatus(payload.data?.status);
+        if (notifiedStatus === "arrived") {
+          void handleNotificationPress({
+            order_id: payload.data?.order_id,
+            status: payload.data?.status,
+            message: payload.data?.message,
+          });
+          return;
+        }
+
+        // Refresh order silently — no top toast for push alerts.
+        const orderIdFromPayload = payload.data?.order_id;
+        if (orderIdFromPayload) {
+          void handleNotificationPress({
+            order_id: orderIdFromPayload,
+            status: payload.data?.status,
+            message: payload.data?.message,
+          });
         }
       },
     );
     return () => {
       unsubscribe();
     };
-  }, [showToast, t]);
+  }, [t]);
 
   useEffect(() => {
     const handleAppStateChange = (nextState: string) => {
@@ -664,7 +705,7 @@ const OrderPlace: React.FC = () => {
 
   const processTapPayment = useCallback(
     async (tipAmountStr: string) => {
-      if (isPayingNow || !orderId) return;
+      if (isPayingNow || !orderId || !order) return;
 
       if (isCashPayment()) {
         // console.log("[Pay Now] Cash order — skipping Tap payment");
@@ -677,9 +718,18 @@ const OrderPlace: React.FC = () => {
         const parsedOrderId = orderId.startsWith('"')
           ? JSON.parse(orderId)
           : orderId;
-        const baseAmount = parseFloat(order?.amount || "0");
-        const extraAmount = acceptedExtraTotalRef.current;
-        const amount = baseAmount + extraAmount;
+        const customerId = String(
+          order.user?.id || order.user_id || userId || "",
+        );
+        const providerId = String(
+          order.provider?.id || order.provider_id || order.to_id || "",
+        );
+        const amount = getOrderPayableTotalFromOrder(
+          order,
+          orderExtrasRef.current,
+          customerId,
+          providerId,
+        );
         const tipAmount = parseFloat(tipAmountStr || "0");
 
         // console.log(
@@ -730,7 +780,13 @@ const OrderPlace: React.FC = () => {
       order?.amount,
       order?.method_details,
       order?.payment_method,
+      order?.user?.id,
+      order?.user_id,
+      order?.provider?.id,
+      order?.provider_id,
+      order?.to_id,
       orderId,
+      userId,
       showToast,
       t,
       refreshOrderDetails,
@@ -898,7 +954,9 @@ const OrderPlace: React.FC = () => {
       return updated;
     });
 
+    setPopupType(null);
     await refreshOrderDetails(parsedOrderId);
+    // Extra popup (if queued) will flush when popupType becomes null.
   };
 
   const handleCancel = async () => {
@@ -943,6 +1001,20 @@ const OrderPlace: React.FC = () => {
   const handleDetailsScreen = () => {
     setActiveTab("Details");
     setDetailsScreen(true);
+
+    const parsedId =
+      parseStoredOrderId(orderId) ?? normalizeOrderId(orderId);
+    const pending =
+      pendingOrderExtraRef.current ||
+      (isPendingOrderExtra(orderExtraRef.current)
+        ? orderExtraRef.current
+        : null) ||
+      queuedPendingExtraRef.current?.extra ||
+      null;
+
+    if (parsedId && pending) {
+      void maybeShowExtraPopup(pending, parsedId);
+    }
   };
 
   const handleOrderCompleted = async () => {
@@ -1075,7 +1147,8 @@ const OrderPlace: React.FC = () => {
         </View>
         {activeTab === "Details" ? (
           <OrderDetails
-            order={mergeOrderWithExtra(order, orderExtra) as OrderType}
+            order={mergeOrderWithExtras(order, allOrderExtras) as OrderType}
+            extras={allOrderExtras}
             onAddRating={
               order.status?.toLowerCase() === "completed" &&
               Number(order.customer_review?.rating ?? order.rating ?? 0) <= 0

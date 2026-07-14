@@ -23,7 +23,6 @@ import Button from "~/components/button";
 import Header from "~/components/header";
 import Popup from "~/components/popup";
 import ProviderCard from "~/components/provider_card";
-import { useToast } from "~/components/ToastProvider";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { OrderType } from "~/types/dataTypes";
@@ -97,7 +96,6 @@ const getRegionForCoordinates = (points: MapCoordinate[]) => {
 
 export default function Track() {
   const { t } = useTranslation();
-  const { showToast } = useToast();
   const slideAnim = useRef(new Animated.Value(800)).current;
   const [location, setLocation] = useState<LocationStateType | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -149,18 +147,14 @@ export default function Track() {
   const showArrivedPopup = useCallback(
     (forceShow = false) => {
       if (popupTypeRef.current === "arrived") return;
-      if (
-        !forceShow &&
-        lastShownStatusRef.current === "arrived"
-      ) {
+      if (!forceShow && lastShownStatusRef.current === "arrived") {
         return;
       }
 
       lastShownStatusRef.current = "arrived";
       setPopupType("arrived");
-      showToast(t("order.providerArrived"), "success");
     },
-    [showToast, t],
+    [],
   );
 
   const applyOrderUpdate = useCallback(
@@ -416,13 +410,8 @@ export default function Track() {
       const liveStatus = normalizeStatus(orderRef.current?.status);
       const notifiedStatus = normalizeStatus(data.status);
 
-      if (notifiedStatus === "arrived" && liveStatus === "arrived") {
+      if (notifiedStatus === "arrived" || liveStatus === "arrived") {
         showArrivedPopup(true);
-        return;
-      }
-
-      if (data.message) {
-        showToast(data.message, "info");
       }
     };
 
@@ -431,31 +420,21 @@ export default function Track() {
         void handleNotificationData(data);
       },
       (payload) => {
-        const message =
-          payload.body ||
-          payload.data?.message ||
-          payload.title ||
-          payload.data?.title;
-        if (!message) return;
+        const orderIdFromPayload = payload.data?.order_id;
+        if (!orderIdFromPayload) return;
 
-        const notifiedStatus = normalizeStatus(payload.data?.status);
-        if (notifiedStatus === "arrived") {
-          void handleNotificationData({
-            order_id: payload.data?.order_id,
-            status: payload.data?.status,
-            message,
-          });
-          return;
-        }
-
-        showToast(message, "info");
+        void handleNotificationData({
+          order_id: orderIdFromPayload,
+          status: payload.data?.status,
+          message: payload.data?.message,
+        });
       },
     );
 
     return () => {
       unsubscribe();
     };
-  }, [fetchOrderDetails, orderId, showArrivedPopup, showToast]);
+  }, [fetchOrderDetails, orderId, showArrivedPopup]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {

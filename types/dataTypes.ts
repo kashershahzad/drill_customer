@@ -25,6 +25,12 @@ export type OrderType = {
   bill_image?: string;
   extra_paid_by?: string;
   extra_accepted?: string;
+  /** Who covers the extra balance: "provider" | "customer" */
+  extra_balance_payer?: string;
+  /** Total extra amount paid/covered by provider */
+  extra_paid_by_provider_total?: string;
+  /** Total extra amount paid/covered by customer */
+  extra_paid_by_customer_total?: string;
   job_time_finished?: string;
   bonus_time_started?: string;
   bonus_time_ended?: string;

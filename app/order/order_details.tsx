@@ -14,15 +14,18 @@ import ServiceDetailsCard from "~/components/service_details_card";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { OrderType } from "~/types/dataTypes";
+import { OrderExtra } from "~/utils/orderExtra";
 import { ms, s, vs } from "~/utils/responsive";
 
 interface OrderDetailsProps {
   order: OrderType;
+  extras?: OrderExtra[];
   onAddRating?: () => void;
 }
 
 export default function OrderDetails({
   order,
+  extras,
   onAddRating,
 }: OrderDetailsProps) {
   const [showOrderDetails, setShowOrderDetails] = useState(false);
@@ -60,7 +63,9 @@ export default function OrderDetails({
             )}
           </Text>
         </TouchableOpacity>
-        {showOrderDetails && <OrderDetailsSection order={order} />}
+        {showOrderDetails && (
+          <OrderDetailsSection order={order} extras={extras} />
+        )}
       </View>
       <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>
         {t("booking.aboutserviceprovider")}

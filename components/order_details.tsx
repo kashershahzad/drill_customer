@@ -9,7 +9,13 @@ import DashedSeparator from "./dashed_seprator";
 import { formatAppTime } from "~/utils/locale";
 import {
   formatExtraStatusLabel,
-  resolveOrderExtraStatus,
+  getOrderExtraDisplayAmount,
+  OrderExtra,
+  parseExtraImages,
+  parseOrderExtrasFromOrder,
+  resolveOrderBalancePayer,
+  resolvePaidByLabel,
+  sortOrderExtrasAscending,
 } from "~/utils/orderExtra";
 
 // Helper function to format timestamp (time only, no date)
@@ -93,29 +99,145 @@ const getTimelineEvents = (order: OrderType) => {
   return events;
 };
 
-const OrderDetailsSection = ({ order }: OrderType) => {
+const OrderDetailsSection = ({
+  order,
+  extras,
+}: {
+  order: OrderType;
+  extras?: OrderExtra[];
+}) => {
   console.log("order", order);
   const { t } = useTranslation();
-
-  // Parse final_images JSON
-  let finalImages: { itemImage?: string; recipeImage?: string } = {};
-  if (order.final_images) {
-    try {
-      finalImages =
-        typeof order.final_images === "string"
-          ? JSON.parse(order.final_images)
-          : order.final_images;
-    } catch (error) {
-      console.error("Error parsing final_images:", error);
-    }
-  }
 
   // Get timeline events from history
   const timelineEvents = getTimelineEvents(order);
 
-  const extraStatusLabel = formatExtraStatusLabel(
-    resolveOrderExtraStatus(order),
-    t,
+  const customerUserId = String(order.user?.id || order.user_id || "");
+  const providerUserId = String(
+    order.provider?.id || order.provider_id || order.to_id || "",
+  );
+  const balancePayer = resolveOrderBalancePayer(order);
+  const extraDisplayAmount = getOrderExtraDisplayAmount(order);
+  const paidByLabel =
+    balancePayer === "customer"
+      ? t("me")
+      : balancePayer === "provider"
+        ? t("provider")
+        : "";
+
+  const imageBaseUrl = String(order.image_url || "");
+  const orderExtras = sortOrderExtrasAscending(
+    extras && extras.length > 0
+      ? extras
+      : parseOrderExtrasFromOrder(order),
+  );
+
+  const showExtraBoxes = orderExtras.length > 0;
+  const showExtraSummary = Boolean(
+    extraDisplayAmount || balancePayer !== "unknown",
+  );
+
+  const resolveImageUri = (fileName?: string) => {
+    if (!fileName) return null;
+    if (fileName.startsWith("http")) return fileName;
+    return `${imageBaseUrl}${fileName}`;
+  };
+
+  const renderExtraBox = (
+    opts: {
+      title: string;
+      timestamp?: string;
+      amount?: string;
+      paidBy?: string;
+      detail?: string;
+      itemImage?: string;
+      billImage?: string;
+      statusLabel?: string;
+    },
+    key: string,
+  ) => (
+    <View key={key} style={styles.extraBox}>
+      <Text style={styles.extraBoxTitle}>{opts.title}</Text>
+
+      {opts.timestamp ? (
+        <>
+          <View style={styles.rowBetween}>
+            <Text style={styles.grayText}>{t("extraAdded")}:</Text>
+            <Text style={styles.grayText}>{opts.timestamp}</Text>
+          </View>
+          <DashedSeparator />
+        </>
+      ) : null}
+
+      {opts.amount ? (
+        <>
+          <View style={styles.rowBetween}>
+            <Text style={styles.grayText}>
+              {t("popup.extraAmountLabel", "Extra Amount")}:
+            </Text>
+            <Text style={styles.grayText}>SAR {opts.amount}</Text>
+          </View>
+          <DashedSeparator />
+        </>
+      ) : null}
+
+      {opts.paidBy ? (
+        <>
+          <View style={styles.rowBetween}>
+            <Text style={styles.grayText}>{t("extraPaidBy")}:</Text>
+            <Text style={styles.grayText}>{opts.paidBy}</Text>
+          </View>
+          <DashedSeparator />
+        </>
+      ) : null}
+
+      {opts.detail ? (
+        <>
+          <View style={styles.rowBetween}>
+            <Text style={styles.grayText}>
+              {t("order.extraDetail", "Extra Detail")}:
+            </Text>
+            <Text style={[styles.grayText, styles.detailValue]}>
+              {opts.detail}
+            </Text>
+          </View>
+          <DashedSeparator />
+        </>
+      ) : null}
+
+      {opts.itemImage ? (
+        <>
+          <View style={styles.rowBetween}>
+            <Text style={styles.grayText}>{t("itemImage")}:</Text>
+            <Image
+              source={{ uri: opts.itemImage }}
+              style={styles.problemImage}
+            />
+          </View>
+          <DashedSeparator />
+        </>
+      ) : null}
+
+      {opts.billImage ? (
+        <>
+          <View style={styles.rowBetween}>
+            <Text style={styles.grayText}>{t("billImage")}:</Text>
+            <Image
+              source={{ uri: opts.billImage }}
+              style={styles.problemImage}
+            />
+          </View>
+          <DashedSeparator />
+        </>
+      ) : null}
+
+      {opts.statusLabel ? (
+        <View style={styles.rowBetween}>
+          <Text style={styles.grayText}>{t("extraStatus")}:</Text>
+          <Text style={styles.grayText}>{opts.statusLabel}</Text>
+        </View>
+      ) : null}
+    </View>
   );
 
   return (
@@ -197,102 +319,42 @@ const OrderDetailsSection = ({ order }: OrderType) => {
         return null;
       })()}
 
-      {/* Extra Added - show if extra_detail exists */}
-      {order.extra_detail && (
-        <>
-          <View style={styles.rowBetween}>
-            <Text style={styles.grayText}>{t("extraAdded")}:</Text>
-            <Text style={styles.grayText}>
-              {order.extra_amount ? `SAR ${order.extra_amount}` : ""}
-            </Text>
-          </View>
-          {order.extra_detail && (
-            <Text style={[styles.grayText, { marginTop: 4, fontSize: 12 }]}>
-              {order.extra_detail}
-            </Text>
-          )}
-          <DashedSeparator />
-        </>
-      )}
+      {/* Extra Added 1, 2, ... — match backend list */}
+      {showExtraBoxes ? (
+        <View style={styles.extrasList}>
+          {orderExtras.map((extra, index) => {
+            const images = parseExtraImages(extra.images);
+            const paidByKey = resolvePaidByLabel(
+              extra.paid_by,
+              customerUserId,
+              providerUserId,
+            );
+            const extraPaidBy =
+              paidByKey === "customer"
+                ? t("me")
+                : paidByKey === "provider"
+                  ? t("provider")
+                  : "";
 
-      {/* Item Image from final_images */}
-      {finalImages.itemImage && (
-        <>
-          <View style={styles.rowBetween}>
-            <Text style={styles.grayText}>{t("itemImage")}:</Text>
-            <Image
-              source={{ uri: `${order.image_url}${finalImages.itemImage}` }}
-              style={styles.problemImage}
-            />
-          </View>
-          <DashedSeparator />
-        </>
-      )}
-
-      {/* Bill/Recipe Image from final_images */}
-      {finalImages.recipeImage && (
-        <>
-          <View style={styles.rowBetween}>
-            <Text style={styles.grayText}>{t("billImage")}:</Text>
-            <Image
-              source={{ uri: `${order.image_url}${finalImages.recipeImage}` }}
-              style={styles.problemImage}
-            />
-          </View>
-          <DashedSeparator />
-        </>
-      )}
-
-      {/* Fallback: Show item_image and bill_image if they exist directly on order */}
-      {!finalImages.itemImage && order.item_image && (
-        <>
-          <View style={styles.rowBetween}>
-            <Text style={styles.grayText}>{t("itemImage")}:</Text>
-            <Image
-              source={{ uri: `${order.image_url}${order.item_image}` }}
-              style={styles.problemImage}
-            />
-          </View>
-          <DashedSeparator />
-        </>
-      )}
-
-      {!finalImages.recipeImage && order.bill_image && (
-        <>
-          <View style={styles.rowBetween}>
-            <Text style={styles.grayText}>{t("billImage")}:</Text>
-            <Image
-              source={{ uri: `${order.image_url}${order.bill_image}` }}
-              style={styles.problemImage}
-            />
-          </View>
-          <DashedSeparator />
-        </>
-      )}
-
-      {/* Extra Paid By */}
-      {order.paid_by && order.paid_by !== "0" && (
-        <>
-          <View style={styles.rowBetween}>
-            <Text style={styles.grayText}>{t("extraPaidBy")}:</Text>
-            <Text style={styles.grayText}>
-              {order.paid_by === order.user_id ? t("me") : t("provider")}
-            </Text>
-          </View>
-          <DashedSeparator />
-        </>
-      )}
-
-      {/* Extra Status - show when extra was added */}
-      {order.extra_detail && (
-        <>
-          <View style={styles.rowBetween}>
-            <Text style={styles.grayText}>{t("extraStatus")}:</Text>
-            <Text style={styles.grayText}>{extraStatusLabel}</Text>
-          </View>
-          <DashedSeparator />
-        </>
-      )}
+            return renderExtraBox(
+              {
+                title: `${t("extraAdded").replace(/:$/, "")} ${index + 1}`,
+                timestamp: extra.created_at || extra.timestamp,
+                amount: extra.amount,
+                paidBy: extraPaidBy || undefined,
+                detail: extra.detail,
+                itemImage: resolveImageUri(images.itemImage) || undefined,
+                billImage: resolveImageUri(images.recipeImage) || undefined,
+                statusLabel: formatExtraStatusLabel(
+                  extra.status,
+                  t as (key: string, defaultValue?: string) => string,
+                ),
+              },
+              `extra-${extra.id || index}`,
+            );
+          })}
+        </View>
+      ) : null}
 
       {/* Job Time Finished, Bonus Time, Order Completed - check history for these */}
       {order.history && Array.isArray(order.history) && (
@@ -433,6 +495,30 @@ const OrderDetailsSection = ({ order }: OrderType) => {
           {order.payment_status || t("pending")}
         </Text>
       </View>
+
+      {/* Order-level Extra Amount / Paid By last (API totals) */}
+      {showExtraSummary ? (
+        <>
+          <DashedSeparator />
+          {extraDisplayAmount ? (
+            <>
+              <View style={styles.rowBetween}>
+                <Text style={styles.grayText}>
+                  {t("popup.extraAmountLabel", "Extra Amount")}:
+                </Text>
+                <Text style={styles.blueText}>SAR {extraDisplayAmount}</Text>
+              </View>
+              <DashedSeparator />
+            </>
+          ) : null}
+          {paidByLabel ? (
+            <View style={styles.rowBetween}>
+              <Text style={styles.grayText}>{t("extraPaidBy")}:</Text>
+              <Text style={styles.grayText}>{paidByLabel}</Text>
+            </View>
+          ) : null}
+        </>
+      ) : null}
     </View>
   );
 };
@@ -440,11 +526,45 @@ const OrderDetailsSection = ({ order }: OrderType) => {
 export default OrderDetailsSection;
 
 const styles = StyleSheet.create({
-  orderDetails: { marginTop: vs(7), padding: s(14), backgroundColor: Colors.white, borderRadius: ms(12) },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginVertical: vs(4) },
-  boldText: { fontFamily: FONTS.semiBold, color: Colors.secondary300, fontSize: ms(13) },
-  blueText: { fontFamily: FONTS.semiBold, color: Colors.secondary, fontSize: ms(13) },
+  orderDetails: {
+    marginTop: vs(7),
+    padding: s(14),
+    backgroundColor: Colors.white,
+    borderRadius: ms(12),
+  },
+  extrasList: {
+    gap: vs(12),
+    marginTop: vs(14),
+  },
+  extraBox: {
+    backgroundColor: Colors.primary300,
+    borderRadius: ms(12),
+    padding: s(12),
+  },
+  extraBoxTitle: {
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+    fontSize: ms(15),
+    marginBottom: vs(8),
+  },
+  rowBetween: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginVertical: vs(4),
+  },
+  boldText: {
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary300,
+    fontSize: ms(13),
+  },
+  blueText: {
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+    fontSize: ms(13),
+  },
   grayText: { color: Colors.secondary, fontSize: ms(13) },
+  detailValue: { flex: 1, textAlign: "right", marginLeft: s(12) },
   completedText: { color: Colors.success || "#4CAF50" },
   problemImage: { width: s(60), height: s(60), borderRadius: ms(8) },
 });

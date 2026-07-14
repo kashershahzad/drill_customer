@@ -43,16 +43,154 @@ export const isPendingOrderExtra = (extra: OrderExtra | null | undefined) => {
 
 export const isAcceptedOrderExtra = (extra: OrderExtra | null | undefined) => {
   if (!hasOrderExtraContent(extra)) return false;
-  return normalizeExtraField(extra?.status).toLowerCase() === "accepted";
+  const status = normalizeExtraField(extra?.status).toLowerCase();
+  const acceptedFlag = normalizeExtraField(extra?.extra_accepted).toLowerCase();
+  if (status === "rejected" || acceptedFlag === "rejected") return false;
+  if (status === "accepted") return true;
+  if (acceptedFlag === "accepted" || acceptedFlag === "1") return true;
+  return false;
 };
 
-export const getAcceptedOrderExtrasTotal = (extras: OrderExtra[]): number =>
-  extras
-    .filter(isAcceptedOrderExtra)
-    .reduce((sum, extra) => {
-      const amount = parseFloat(extra.amount || "0");
-      return sum + (Number.isFinite(amount) ? amount : 0);
-    }, 0);
+export const resolvePaidByLabel = (
+  paidById: string | undefined,
+  customerUserId: string,
+  providerUserId: string,
+): "customer" | "provider" | "unknown" => {
+  const paidBy = normalizeExtraField(paidById);
+  if (!paidBy) return "unknown";
+
+  const customer = normalizeExtraField(customerUserId);
+  const provider = normalizeExtraField(providerUserId);
+
+  // Legacy flags
+  if (paidBy === "1") return "customer";
+  if (paidBy === "0") return "provider";
+
+  if (customer && paidBy === customer) return "customer";
+  if (provider && paidBy === provider) return "provider";
+
+  // paid_by is set to someone other than the customer → provider is covering it
+  if (customer && paidBy !== customer) return "provider";
+
+  return "unknown";
+};
+
+/**
+ * Extra amount effect on customer payable total:
+ * - paid by customer → ADD
+ * - paid by provider → SUBTRACT (customer does not pay this)
+ */
+export const getAcceptedOrderExtrasAdjustment = (
+  extras: OrderExtra[],
+  customerUserId?: string,
+  providerUserId?: string,
+): number =>
+  extras.filter(isAcceptedOrderExtra).reduce((sum, extra) => {
+    const amount = parseFloat(extra.amount || "0");
+    if (!Number.isFinite(amount) || amount === 0) return sum;
+
+    const paidBy = resolvePaidByLabel(
+      extra.paid_by,
+      customerUserId || "",
+      providerUserId || "",
+    );
+
+    if (paidBy === "customer") return sum + amount;
+    if (paidBy === "provider") return sum - amount;
+    return sum;
+  }, 0);
+
+export const getAcceptedOrderExtrasTotal = (
+  extras: OrderExtra[],
+  customerUserId?: string,
+  providerUserId?: string,
+): number =>
+  getAcceptedOrderExtrasAdjustment(extras, customerUserId, providerUserId);
+
+export const getOrderPayableTotal = (
+  baseAmount: number | string | undefined,
+  extras: OrderExtra[],
+  customerUserId?: string,
+  providerUserId?: string,
+): number => {
+  const base = parseFloat(String(baseAmount ?? "0"));
+  const safeBase = Number.isFinite(base) ? base : 0;
+  const adjustment = getAcceptedOrderExtrasAdjustment(
+    extras,
+    customerUserId,
+    providerUserId,
+  );
+  return Math.max(0, safeBase + adjustment);
+};
+
+/** Prefer API order-level fields: extra_balance_payer + totals */
+export const resolveOrderBalancePayer = (
+  order: OrderType,
+): "customer" | "provider" | "unknown" => {
+  const payer = normalizeExtraField(order.extra_balance_payer).toLowerCase();
+  if (payer === "provider") return "provider";
+  if (payer === "customer" || payer === "user" || payer === "me") {
+    return "customer";
+  }
+  return "unknown";
+};
+
+export const getOrderExtraDisplayAmount = (order: OrderType): string => {
+  const payer = resolveOrderBalancePayer(order);
+  if (payer === "provider") {
+    return (
+      normalizeExtraField(order.extra_paid_by_provider_total) ||
+      normalizeExtraField(order.extra_amount)
+    );
+  }
+  if (payer === "customer") {
+    return (
+      normalizeExtraField(order.extra_paid_by_customer_total) ||
+      normalizeExtraField(order.extra_amount)
+    );
+  }
+  return (
+    normalizeExtraField(order.extra_paid_by_provider_total) ||
+    normalizeExtraField(order.extra_paid_by_customer_total) ||
+    normalizeExtraField(order.extra_amount)
+  );
+};
+
+export const getOrderPayableTotalFromOrder = (
+  order: OrderType,
+  extras: OrderExtra[] = [],
+  customerUserId?: string,
+  providerUserId?: string,
+): number => {
+  const base = parseFloat(String(order.amount ?? "0"));
+  const safeBase = Number.isFinite(base) ? base : 0;
+  const payer = resolveOrderBalancePayer(order);
+
+  if (payer === "provider") {
+    const providerTotal = parseFloat(
+      String(order.extra_paid_by_provider_total ?? "0"),
+    );
+    const amount = Number.isFinite(providerTotal) ? providerTotal : 0;
+    return Math.max(0, safeBase - amount);
+  }
+
+  if (payer === "customer") {
+    const customerTotal = parseFloat(
+      String(
+        order.extra_paid_by_customer_total ?? order.extra_amount ?? "0",
+      ),
+    );
+    const amount = Number.isFinite(customerTotal) ? customerTotal : 0;
+    return Math.max(0, safeBase + amount);
+  }
+
+  return getOrderPayableTotal(
+    order.amount,
+    extras,
+    customerUserId,
+    providerUserId,
+  );
+};
 
 export const getOrderExtraStorageKey = (
   orderId: string,
@@ -180,6 +318,10 @@ export const mergeOrderWithExtra = (
     return order;
   }
 
+  const existing = parseOrderExtrasFromOrder(order).filter(
+    (item) => item.id !== extra.id,
+  );
+
   return {
     ...order,
     extra_detail: extra.detail,
@@ -187,9 +329,42 @@ export const mergeOrderWithExtra = (
     paid_by: extra.paid_by || order.paid_by,
     final_images: extra.images || order.final_images,
     extra_status: extra.status || order.extra_status,
-    order_extra: [extra],
+    order_extra: [...existing, extra],
   };
 };
+
+export const mergeOrderWithExtras = (
+  order: OrderType,
+  extras: OrderExtra[],
+): OrderType => {
+  // Empty means "not loaded yet" from callers — keep order's existing extras.
+  if (!extras.length) {
+    return order;
+  }
+
+  const latest = getLatestOrderExtra(extras)!;
+  return {
+    ...order,
+    extra_detail: latest.detail || order.extra_detail,
+    extra_amount: latest.amount || order.extra_amount,
+    paid_by: latest.paid_by || order.paid_by,
+    final_images: latest.images || order.final_images,
+    extra_status: latest.status || order.extra_status,
+    order_extra: extras,
+  };
+};
+
+/** Oldest → newest so Extra Added 1, 2 match creation order */
+export const sortOrderExtrasAscending = (extras: OrderExtra[]): OrderExtra[] =>
+  [...extras].sort((a, b) => {
+    const idA = Number(a.id) || 0;
+    const idB = Number(b.id) || 0;
+    if (idA !== idB) return idA - idB;
+    return (
+      new Date(a.created_at || a.timestamp || 0).getTime() -
+      new Date(b.created_at || b.timestamp || 0).getTime()
+    );
+  });
 
 export type ExtraImages = {
   itemImage?: string;
@@ -255,20 +430,6 @@ export const formatExtraStatusLabel = (
   }
 
   return normalizeExtraField(status);
-};
-
-export const resolvePaidByLabel = (
-  paidById: string | undefined,
-  customerUserId: string,
-  providerUserId: string,
-): "customer" | "provider" | "unknown" => {
-  if (!paidById) return "unknown";
-  if (customerUserId && paidById === customerUserId) return "customer";
-  if (providerUserId && paidById === providerUserId) return "provider";
-  if (paidById === "0" || paidById === "1") {
-    return paidById === "1" ? "customer" : "provider";
-  }
-  return "unknown";
 };
 
 export const parseOrderExtrasFromOrder = (order: OrderType): OrderExtra[] => {
