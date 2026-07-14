@@ -5,16 +5,20 @@ import StarIcon from "@/assets/svgs/Star.svg";
 import Timeup from "@/assets/svgs/timeup.svg";
 import Tipup from "@/assets/svgs/tipup.svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    Alert,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Keyboard,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
@@ -62,9 +66,62 @@ export default function Popup({
   onExtraRejected,
 }: PopupProps) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [tipAmount, setTipAmount] = useState("");
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const needsKeyboardLift = type === "tipup" || type === "review";
+
+  const sheetStyle = [
+    styles.sheet,
+    Platform.OS === "android" ? styles.sheetAndroid : null,
+    {
+      paddingBottom:
+        keyboardOffset > 0 ? vs(18) : Math.max(insets.bottom, vs(18)),
+    },
+    // iOS only: Android soft-input already resizes the window — padding
+    // the sheet with keyboard height pushes it to the top of the screen.
+    Platform.OS === "ios" && keyboardOffset > 0
+      ? { marginBottom: keyboardOffset }
+      : null,
+  ];
+
+  useEffect(() => {
+    // Keyboard offset lift is only needed on iOS.
+    if (!needsKeyboardLift || Platform.OS !== "ios") {
+      setKeyboardOffset(0);
+      return;
+    }
+
+    const showSub = Keyboard.addListener("keyboardWillShow", (event) => {
+      setKeyboardOffset(event.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener("keyboardWillHide", () => {
+      setKeyboardOffset(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [needsKeyboardLift]);
+
+  const scrollToInput = () => {
+    setTimeout(
+      () => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      },
+      Platform.OS === "ios" ? 320 : 120,
+    );
+  };
+
+  useEffect(() => {
+    if (type === "review" && rating > 0) {
+      scrollToInput();
+    }
+  }, [rating, type]);
 
   useEffect(() => {
     if (type !== "orderComplete") return;
@@ -76,7 +133,6 @@ export default function Popup({
     return () => clearTimeout(timer);
   }, [type, setShowPopup]);
 
-  console.log("type", type);
   const handleNext = () => {
     setShowPopup(null);
   };
@@ -280,172 +336,113 @@ export default function Popup({
     t("popup.excellent"),
   ];
 
-  // Render arrived popup content
-  if (type === "arrived") {
-    return (
-      <View style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.dateTime}>21 July 2023, 10:35 AM</Text>
-          <View style={styles.arrivedImageContainer}>
-            <Arrived />
-          </View>
-          <Text style={styles.title}>{t("popup.serviceProviderArrived")}</Text>
-          <Text style={styles.description}>
-            {t("popup.arrivedDescription")}
-          </Text>
-        </View>
-        <View style={styles.footerButtons}>
-          <Button
-            title={t("popup.notYet")}
-            variant="secondary"
-            fullWidth={false}
-            width="34%"
-            onPress={handleHide}
-          />
-          <Button
-            title={t("popup.arrived")}
-            variant="primary"
-            fullWidth={false}
-            width="64%"
-            onPress={handleStartService}
-          />
-        </View>
-      </View>
-    );
-  }
-
-  // Render time-up popup content
-  if (type === "time-up") {
-    return (
-      <View style={styles.container}>
-        <View style={styles.content}>
+  const renderPopupBody = () => (
+    <View style={styles.content}>
+      {type === "timeup" ? (
+        <>
           <Timeup style={styles.image} />
           <Text style={styles.title}>{t("popup.timeUp")}</Text>
           <Text style={styles.description}>{t("popup.timeUpDescription")}</Text>
-        </View>
-        <View style={styles.footerButtons}>
-          <Button
-            title={t("popup.complete")}
-            variant="secondary"
-            fullWidth={false}
-            width="34%"
-            onPress={() => {
-              if (onCompleteToReview) {
-                onCompleteToReview();
-              } else {
-                handleComplete();
-              }
-            }}
+        </>
+      ) : type === "tipup" ? (
+        <>
+          <Tipup style={styles.image} />
+          <Text style={styles.title}>{t("popup.addTip")}</Text>
+          <Text style={styles.description}>{t("popup.tipDescription")}</Text>
+          <TextInput
+            style={[styles.input, { fontSize: getInputFontSize(tipAmount) }]}
+            placeholder={t("popup.enterTipAmount")}
+            placeholderTextColor={Colors.secondary300}
+            keyboardType="decimal-pad"
+            value={tipAmount}
+            onChangeText={setTipAmount}
+            onFocus={scrollToInput}
           />
-          <Button
-            title={t("popup.moveHigher")}
-            variant="primary"
-            fullWidth={false}
-            width="64%"
-            onPress={handleMoveHigher}
-          />
-        </View>
-      </View>
-    );
-  }
+        </>
+      ) : type === "orderComplete" ? (
+        <>
+          <OrderComplete style={styles.image} />
+          <Text style={styles.title}>{t("popup.orderCompleted")}</Text>
+          <Text style={styles.description}>
+            {t("popup.orderCompletedDescription")}
+          </Text>
+        </>
+      ) : type === "extraAdded" ? (
+        <>
+          <Text style={styles.title}>{t("popup.extraAddedTitle")}</Text>
+          <Text style={styles.description}>
+            {t("popup.extraAddedDescription")}
+          </Text>
+          {extraAmount ? (
+            <Text style={styles.extraRow}>
+              <Text style={styles.extraLabel}>
+                {t("popup.extraAmountLabel")}:{" "}
+              </Text>
+              <Text style={styles.extraValue}>SAR {extraAmount}</Text>
+            </Text>
+          ) : null}
+          {extraDetail ? (
+            <Text style={styles.extraRow}>
+              <Text style={styles.extraLabel}>
+                {t("popup.extraDescriptionLabel")}:{" "}
+              </Text>
+              <Text style={styles.extraValue}>{extraDetail}</Text>
+            </Text>
+          ) : null}
+        </>
+      ) : null}
+    </View>
+  );
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        {type === "timeup" ? (
-          <>
-            <Timeup style={styles.image} />
-            <Text style={styles.title}>{t("popup.timeUp")}</Text>
-            <Text style={styles.description}>
-              {t("popup.timeUpDescription")}
-            </Text>
-          </>
-        ) : type === "tipup" ? (
-          <>
-            <Tipup style={styles.image} />
-            <Text style={styles.title}>{t("popup.addTip")}</Text>
-            <Text style={styles.description}>{t("popup.tipDescription")}</Text>
-            <TextInput
-              style={[styles.input, { fontSize: getInputFontSize(tipAmount) }]}
-              placeholder={t("popup.enterTipAmount")}
-              placeholderTextColor={Colors.secondary300}
-              keyboardType="numeric"
-              value={tipAmount}
-              onChangeText={setTipAmount}
-            />
-          </>
-        ) : type === "orderComplete" ? (
-          <>
-            <OrderComplete style={styles.image} />
-            <Text style={styles.title}>{t("popup.orderCompleted")}</Text>
-            <Text style={styles.description}>
-              {t("popup.orderCompletedDescription")}
-            </Text>
-          </>
-        ) : type === "extraAdded" ? (
-          <>
-            <Text style={styles.title}>{t("popup.extraAddedTitle")}</Text>
-            <Text style={styles.description}>
-              {t("popup.extraAddedDescription")}
-            </Text>
-            {extraAmount ? (
-              <Text style={styles.extraRow}>
-                <Text style={styles.extraLabel}>
-                  {t("popup.extraAmountLabel")}:{" "}
-                </Text>
-                <Text style={styles.extraValue}>SAR {extraAmount}</Text>
-              </Text>
-            ) : null}
-            {extraDetail ? (
-              <Text style={styles.extraRow}>
-                <Text style={styles.extraLabel}>
-                  {t("popup.extraDescriptionLabel")}:{" "}
-                </Text>
-                <Text style={styles.extraValue}>{extraDetail}</Text>
-              </Text>
-            ) : null}
-          </>
-        ) : type === "review" ? (
-          <>
-            <Text style={styles.title}>{t("popup.rateExperience")}</Text>
-            <Text style={styles.description}>{t("popup.howWasService")}</Text>
-            <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                  {star <= rating ? (
-                    <StarIcon height={24} width={24} />
-                  ) : (
-                    <EmptyStarIcon height={24} width={24} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-            {rating > 0 && (
-              <>
-                <Text style={styles.ratingText}>{ratingText[rating - 1]}</Text>
-                <Text style={styles.description}>
-                  {t("popup.youGaveStars", {
-                    count: rating,
-                    stars: rating === 1 ? t("popup.star") : t("popup.stars"),
-                  })}
-                </Text>
-                <TextInput
-                  style={[
-                    styles.textarea,
-                    { fontSize: getInputFontSize(review) },
-                  ]}
-                  placeholder={t("popup.writeReview")}
-                  placeholderTextColor={Colors.secondary300}
-                  multiline
-                  value={review}
-                  onChangeText={setReview}
-                />
-              </>
+  const renderReviewContent = () => (
+    <View style={styles.content}>
+      <Text style={styles.title}>{t("popup.rateExperience")}</Text>
+      <Text style={styles.description}>{t("popup.howWasService")}</Text>
+      <View style={styles.starsContainer}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <TouchableOpacity key={star} onPress={() => setRating(star)}>
+            {star <= rating ? (
+              <StarIcon height={24} width={24} />
+            ) : (
+              <EmptyStarIcon height={24} width={24} />
             )}
-          </>
-        ) : null}
+          </TouchableOpacity>
+        ))}
       </View>
-      <View style={styles.footerButtons}>
+      {rating > 0 && (
+        <>
+          <Text style={styles.ratingText}>{ratingText[rating - 1]}</Text>
+          <Text style={styles.description}>
+            {t("popup.youGaveStars", {
+              count: rating,
+              stars: rating === 1 ? t("popup.star") : t("popup.stars"),
+            })}
+          </Text>
+          <TextInput
+            style={[styles.textarea, { fontSize: getInputFontSize(review) }]}
+            placeholder={t("popup.writeReview")}
+            placeholderTextColor={Colors.secondary300}
+            multiline
+            value={review}
+            onChangeText={setReview}
+            onFocus={scrollToInput}
+          />
+          <View style={styles.reviewSubmitWrap}>
+            <Button
+              title={t("submit")}
+              variant="primary"
+              fullWidth={true}
+              width="100%"
+              onPress={handleAddReview}
+            />
+          </View>
+        </>
+      )}
+    </View>
+  );
+
+  const renderPopupFooter = () => (
+    <View style={styles.footerButtons}>
         {type === "timeup" ? (
           <>
             <Button
@@ -505,39 +502,139 @@ export default function Popup({
               onPress={handleExtraAccept}
             />
           </>
-        ) : type === "review" ? (
-          <Button
-            title={t("submit")}
-            variant="primary"
-            fullWidth={true}
-            width="100%"
-            onPress={handleAddReview}
-            disabled={rating === 0}
-          />
         ) : null}
-      </View>
     </View>
   );
+
+  const renderSheet = () => {
+    if (type === "review") {
+      return (
+        <View style={sheetStyle}>
+          <ScrollView
+            ref={scrollRef}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            keyboardDismissMode="interactive"
+            style={[
+              styles.reviewScroll,
+              keyboardOffset > 0 && { maxHeight: vs(300) },
+            ]}
+            contentContainerStyle={styles.reviewScrollContent}
+          >
+            {renderReviewContent()}
+          </ScrollView>
+        </View>
+      );
+    }
+
+    return (
+      <View style={sheetStyle}>
+        {renderPopupBody()}
+        {renderPopupFooter()}
+      </View>
+    );
+  };
+
+  // Render arrived popup content
+  if (type === "arrived") {
+    return (
+      <View style={sheetStyle}>
+        <View style={styles.content}>
+          <Text style={styles.dateTime}>21 July 2023, 10:35 AM</Text>
+          <View style={styles.arrivedImageContainer}>
+            <Arrived />
+          </View>
+          <Text style={styles.title}>{t("popup.serviceProviderArrived")}</Text>
+          <Text style={styles.description}>
+            {t("popup.arrivedDescription")}
+          </Text>
+        </View>
+        <View style={styles.footerButtons}>
+          <Button
+            title={t("popup.notYet")}
+            variant="secondary"
+            fullWidth={false}
+            width="34%"
+            onPress={handleHide}
+          />
+          <Button
+            title={t("popup.arrived")}
+            variant="primary"
+            fullWidth={false}
+            width="64%"
+            onPress={handleStartService}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  // Render time-up popup content
+  if (type === "time-up") {
+    return (
+      <View style={sheetStyle}>
+        <View style={styles.content}>
+          <Timeup style={styles.image} />
+          <Text style={styles.title}>{t("popup.timeUp")}</Text>
+          <Text style={styles.description}>{t("popup.timeUpDescription")}</Text>
+        </View>
+        <View style={styles.footerButtons}>
+          <Button
+            title={t("popup.complete")}
+            variant="secondary"
+            fullWidth={false}
+            width="34%"
+            onPress={() => {
+              if (onCompleteToReview) {
+                onCompleteToReview();
+              } else {
+                handleComplete();
+              }
+            }}
+          />
+          <Button
+            title={t("popup.moveHigher")}
+            variant="primary"
+            fullWidth={false}
+            width="64%"
+            onPress={handleMoveHigher}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  return renderSheet();
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
+  sheet: {
     backgroundColor: Colors.white,
-    borderRadius: ms(20),
+    borderTopLeftRadius: ms(20),
+    borderTopRightRadius: ms(20),
     width: "100%",
-    elevation: 1,
-    shadowColor: Colors.gray100,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    zIndex: 99,
-    paddingVertical: vs(18),
+    paddingTop: vs(18),
     paddingHorizontal: s(16),
     alignItems: "center",
+    alignSelf: "stretch",
+  },
+  sheetAndroid: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  reviewScroll: {
+    width: "100%",
+    maxHeight: vs(420),
+  },
+  reviewScrollContent: {
+    paddingBottom: vs(8),
+  },
+  reviewSubmitWrap: {
+    width: "100%",
+    marginTop: vs(14),
   },
   content: { alignItems: "center", marginBottom: vs(14), width: "100%" },
   dateTime: {

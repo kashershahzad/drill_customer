@@ -7,12 +7,13 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   AppState,
-  Modal,
+  Keyboard,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import RNModal from "react-native-modal";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Popup from "~/components/popup";
 import { useToast } from "~/components/ToastProvider";
@@ -24,6 +25,7 @@ import { calculateDistance } from "~/utils/distance";
 import { setupNotificationListeners } from "~/utils/notification";
 import {
   fetchOrderExtras,
+  getAcceptedOrderExtrasTotal,
   getLatestOrderExtra,
   getLatestPendingOrderExtra,
   getOrderExtraActionErrorMessage,
@@ -101,6 +103,7 @@ const OrderPlace: React.FC = () => {
   const proximityPopupShownRef = useRef<boolean>(false);
   const pendingExtraStorageKeyRef = useRef<string | null>(null);
   const pendingOrderExtraRef = useRef<OrderExtra | null>(null);
+  const acceptedExtraTotalRef = useRef(0);
   const rejectedExtraKeysRef = useRef<Set<string>>(new Set());
   const isExtraActionRef = useRef(false);
   const completionPopupShownRef = useRef<boolean>(false);
@@ -128,10 +131,25 @@ const OrderPlace: React.FC = () => {
     return false;
   };
 
-  const hasCustomerReview = (orderData: OrderType) =>
-    Number(orderData.customer_review?.rating ?? orderData.rating ?? 0) > 0;
+  const hasCustomerReview = (orderData: OrderType) => {
+    const nestedReview =
+      orderData.customer_review ??
+      (typeof orderData.review === "object" && orderData.review !== null
+        ? orderData.review
+        : null);
 
-  const showOrderCompletePopup = () => {
+    if (nestedReview && typeof nestedReview === "object") {
+      return Number((nestedReview as { rating?: string }).rating ?? 0) > 0;
+    }
+
+    return (
+      Number(orderData.rating ?? 0) > 0 ||
+      (typeof orderData.review === "string" && orderData.review.trim().length > 0)
+    );
+  };
+
+  const showOrderCompletePopup = (orderData?: OrderType | null) => {
+    if (orderData && hasCustomerReview(orderData)) return;
     if (completionPopupShownRef.current) return;
     if (
       popupTypeRef.current === "orderComplete" ||
@@ -259,10 +277,10 @@ const OrderPlace: React.FC = () => {
       }
     }
 
-    if (!wasCompleted && isCompleted) {
-      showOrderCompletePopup();
+    if (!wasCompleted && isCompleted && previousOrder) {
+      showOrderCompletePopup(orderData);
     } else if (!previousOrder && isCompleted && !hasCustomerReview(orderData)) {
-      showOrderCompletePopup();
+      showOrderCompletePopup(orderData);
     }
 
     setOrder(orderData);
@@ -353,6 +371,7 @@ const OrderPlace: React.FC = () => {
 
       const latestExtra = getLatestOrderExtra(extras);
       const latestPendingExtra = getLatestPendingOrderExtra(extras);
+      acceptedExtraTotalRef.current = getAcceptedOrderExtrasTotal(extras);
       setOrderExtra(latestExtra);
       orderExtraRef.current = latestPendingExtra ?? latestExtra;
 
@@ -369,6 +388,7 @@ const OrderPlace: React.FC = () => {
 
       setOrderExtra(null);
       orderExtraRef.current = null;
+      acceptedExtraTotalRef.current = 0;
 
       if (showLoading) {
         showToast(t("order.noOrderDetailsFound"), "error");
@@ -657,7 +677,9 @@ const OrderPlace: React.FC = () => {
         const parsedOrderId = orderId.startsWith('"')
           ? JSON.parse(orderId)
           : orderId;
-        const amount = parseFloat(order?.amount || "0");
+        const baseAmount = parseFloat(order?.amount || "0");
+        const extraAmount = acceptedExtraTotalRef.current;
+        const amount = baseAmount + extraAmount;
         const tipAmount = parseFloat(tipAmountStr || "0");
 
         // console.log(
@@ -1152,39 +1174,43 @@ const OrderPlace: React.FC = () => {
 
       {/* Popup with Background Overlay */}
       {showPopup && popupType && (
-        <Modal transparent visible={showPopup} animationType="slide">
-          <View style={styles.overlay}>
-            <TouchableOpacity
-              style={styles.overlayBackground}
-              onPress={() => {
-                if (popupType !== "arrived") {
-                  closePopup();
-                }
-              }}
-            />
-            <View style={styles.popupContainer}>
-              <Popup
-                type={popupType}
-                setShowPopup={setPopupType}
-                orderId={orderId || ""}
-                extraAmount={pendingOrderExtra?.amount ?? orderExtra?.amount}
-                extraDetail={pendingOrderExtra?.detail ?? orderExtra?.detail}
-                onCompleted={handleReviewSubmitted}
-                onCompleteToReview={
-                  manualCompletionFlow ? handleCompleteToReview : undefined
-                }
-                onTipForPayment={
-                  popupType === "tipup" ? processTapPayment : undefined
-                }
-                onOrderUpdated={
-                  popupType === "arrived" ? handleArrivedConfirmed : undefined
-                }
-                onExtraAccepted={handleExtraAccepted}
-                onExtraRejected={handleExtraRejected}
-              />
-            </View>
-          </View>
-        </Modal>
+        <RNModal
+          isVisible={showPopup}
+          onBackdropPress={() => {
+            if (popupType !== "arrived") {
+              Keyboard.dismiss();
+              closePopup();
+            }
+          }}
+          onBackButtonPress={closePopup}
+          style={styles.bottomModal}
+          backdropOpacity={0.5}
+          useNativeDriver
+          useNativeDriverForBackdrop
+          hideModalContentWhileAnimating
+          statusBarTranslucent
+          propagateSwipe
+        >
+          <Popup
+            type={popupType}
+            setShowPopup={setPopupType}
+            orderId={orderId || ""}
+            extraAmount={pendingOrderExtra?.amount ?? orderExtra?.amount}
+            extraDetail={pendingOrderExtra?.detail ?? orderExtra?.detail}
+            onCompleted={handleReviewSubmitted}
+            onCompleteToReview={
+              manualCompletionFlow ? handleCompleteToReview : undefined
+            }
+            onTipForPayment={
+              popupType === "tipup" ? processTapPayment : undefined
+            }
+            onOrderUpdated={
+              popupType === "arrived" ? handleArrivedConfirmed : undefined
+            }
+            onExtraAccepted={handleExtraAccepted}
+            onExtraRejected={handleExtraRejected}
+          />
+        </RNModal>
       )}
     </SafeAreaView>
   );
@@ -1231,18 +1257,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: s(16),
     gap: s(4),
   },
-  overlay: { flex: 1, justifyContent: "flex-end" },
-  overlayBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  popupContainer: {
-    backgroundColor: Colors.white,
-    width: "100%",
-    borderTopLeftRadius: ms(20),
-    borderTopRightRadius: ms(20),
-    justifyContent: "center",
-    alignItems: "center",
+  bottomModal: {
+    justifyContent: "flex-end",
+    margin: 0,
+    padding: 0,
   },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

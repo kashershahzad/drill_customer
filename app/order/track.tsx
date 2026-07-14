@@ -10,21 +10,34 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Animated,
+  AppState,
   Platform,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import RNModal from "react-native-modal";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Button from "~/components/button";
 import Header from "~/components/header";
+import Popup from "~/components/popup";
 import ProviderCard from "~/components/provider_card";
+import { useToast } from "~/components/ToastProvider";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { OrderType } from "~/types/dataTypes";
 import { apiCall } from "~/utils/api";
+import { setupNotificationListeners } from "~/utils/notification";
 import { ms, s, vs } from "~/utils/responsive";
+
+type PopupType = "arrived";
+
+interface NotificationData {
+  order_id?: string;
+  status?: string;
+  message?: string;
+}
 type LocationStateType = Location.LocationObject;
 type MapCoordinate = { latitude: number; longitude: number };
 
@@ -84,10 +97,13 @@ const getRegionForCoordinates = (points: MapCoordinate[]) => {
 
 export default function Track() {
   const { t } = useTranslation();
+  const { showToast } = useToast();
   const slideAnim = useRef(new Animated.Value(800)).current;
   const [location, setLocation] = useState<LocationStateType | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [popupType, setPopupType] = useState<PopupType | null>(null);
+  const [showPopup, setShowPopup] = useState(false);
   const [routeCoordinates, setRouteCoordinates] = useState<
     { latitude: number; longitude: number }[]
   >([]);
@@ -103,9 +119,74 @@ export default function Track() {
   );
   const orderPollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasFittedMapRef = useRef(false);
+  const orderRef = useRef<OrderType | null>(null);
+  const popupTypeRef = useRef<PopupType | null>(null);
+  const lastShownStatusRef = useRef<string | null>(null);
   const GOOGLE_MAPS_API_KEY = "AIzaSyAQiilQ_i4LRPFyMhfLB5ZT3UGMTIxqL0Y";
 
-  // Decode Google polyline to coordinates
+  const normalizeOrderId = (id: string | number | null | undefined): string => {
+    if (id == null) return "";
+    const raw = String(id);
+    try {
+      return String(JSON.parse(raw));
+    } catch {
+      return raw.replace(/^"|"$/g, "");
+    }
+  };
+
+  useEffect(() => {
+    orderRef.current = order;
+  }, [order]);
+
+  useEffect(() => {
+    popupTypeRef.current = popupType;
+  }, [popupType]);
+
+  useEffect(() => {
+    setShowPopup(!!popupType);
+  }, [popupType]);
+
+  const showArrivedPopup = useCallback(
+    (forceShow = false) => {
+      if (popupTypeRef.current === "arrived") return;
+      if (
+        !forceShow &&
+        lastShownStatusRef.current === "arrived"
+      ) {
+        return;
+      }
+
+      lastShownStatusRef.current = "arrived";
+      setPopupType("arrived");
+      showToast(t("order.providerArrived"), "success");
+    },
+    [showToast, t],
+  );
+
+  const applyOrderUpdate = useCallback(
+    (orderData: OrderType) => {
+      const previousOrder = orderRef.current;
+      const previousStatus = normalizeStatus(previousOrder?.status);
+      const nextStatus = normalizeStatus(orderData.status);
+
+      if (nextStatus === "arrived") {
+        if (!previousOrder || previousStatus !== "arrived") {
+          showArrivedPopup(true);
+        }
+      } else if (nextStatus === "started") {
+        lastShownStatusRef.current = "started";
+        if (popupTypeRef.current === "arrived") {
+          setPopupType(null);
+        }
+      }
+
+      setOrder(orderData);
+      orderRef.current = orderData;
+    },
+    [showArrivedPopup],
+  );
+
+  // Fetch route from Google Directions API
   const decodePolyline = (
     encoded: string,
   ): { latitude: number; longitude: number }[] => {
@@ -190,9 +271,10 @@ export default function Track() {
       try {
         const response = await apiCall(formData);
         if (response && response.data && response.data.length > 0) {
-          setOrder(response.data[0]);
+          applyOrderUpdate(response.data[0]);
         } else {
           setOrder(null);
+          orderRef.current = null;
         }
       } catch (error) {
         console.error("Failed to fetch order details", error);
@@ -205,8 +287,22 @@ export default function Track() {
         }
       }
     },
-    [orderId],
+    [orderId, applyOrderUpdate],
   );
+
+  const handleArrivedConfirmed = useCallback(async () => {
+    if (!orderId) return;
+
+    lastShownStatusRef.current = "started";
+    setOrder((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, status: "started" };
+      orderRef.current = updated;
+      return updated;
+    });
+    setPopupType(null);
+    await fetchOrderDetails(false);
+  }, [fetchOrderDetails, orderId]);
 
   const stopOrderPolling = useCallback(() => {
     if (orderPollIntervalRef.current) {
@@ -306,6 +402,71 @@ export default function Track() {
       };
     }, [orderId, fetchOrderDetails, startOrderPolling, stopOrderPolling]),
   );
+
+  useEffect(() => {
+    const handleNotificationData = async (data: NotificationData) => {
+      if (!data?.order_id) return;
+
+      const incomingOrderId = normalizeOrderId(data.order_id);
+      const currentOrderId = normalizeOrderId(orderId);
+      if (currentOrderId && incomingOrderId !== currentOrderId) return;
+
+      await fetchOrderDetails(false);
+
+      const liveStatus = normalizeStatus(orderRef.current?.status);
+      const notifiedStatus = normalizeStatus(data.status);
+
+      if (notifiedStatus === "arrived" && liveStatus === "arrived") {
+        showArrivedPopup(true);
+        return;
+      }
+
+      if (data.message) {
+        showToast(data.message, "info");
+      }
+    };
+
+    const unsubscribe = setupNotificationListeners(
+      (data) => {
+        void handleNotificationData(data);
+      },
+      (payload) => {
+        const message =
+          payload.body ||
+          payload.data?.message ||
+          payload.title ||
+          payload.data?.title;
+        if (!message) return;
+
+        const notifiedStatus = normalizeStatus(payload.data?.status);
+        if (notifiedStatus === "arrived") {
+          void handleNotificationData({
+            order_id: payload.data?.order_id,
+            status: payload.data?.status,
+            message,
+          });
+          return;
+        }
+
+        showToast(message, "info");
+      },
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [fetchOrderDetails, orderId, showArrivedPopup, showToast]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active" || !orderId) return;
+      void fetchOrderDetails(false);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [fetchOrderDetails, orderId]);
 
   useEffect(() => {
     if (
@@ -587,6 +748,27 @@ export default function Track() {
           {order && <ProviderCard order={order} />}
         </View>
       </Animated.View>
+
+      {showPopup && popupType && (
+        <RNModal
+          isVisible={showPopup}
+          style={styles.bottomModal}
+          backdropOpacity={0.5}
+          useNativeDriver
+          hideModalContentWhileAnimating
+        >
+          <Popup
+            type={popupType}
+            setShowPopup={(value) => {
+              if (value === null) {
+                setPopupType(null);
+              }
+            }}
+            orderId={orderId}
+            onOrderUpdated={handleArrivedConfirmed}
+          />
+        </RNModal>
+      )}
     </SafeAreaProvider>
   );
 }
@@ -767,5 +949,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: s(16),
     marginBottom: vs(10),
     textAlign: "center",
+  },
+  bottomModal: {
+    justifyContent: "flex-end",
+    margin: 0,
   },
 });

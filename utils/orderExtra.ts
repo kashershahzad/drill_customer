@@ -41,6 +41,19 @@ export const isPendingOrderExtra = (extra: OrderExtra | null | undefined) => {
   return status !== "accepted" && status !== "rejected";
 };
 
+export const isAcceptedOrderExtra = (extra: OrderExtra | null | undefined) => {
+  if (!hasOrderExtraContent(extra)) return false;
+  return normalizeExtraField(extra?.status).toLowerCase() === "accepted";
+};
+
+export const getAcceptedOrderExtrasTotal = (extras: OrderExtra[]): number =>
+  extras
+    .filter(isAcceptedOrderExtra)
+    .reduce((sum, extra) => {
+      const amount = parseFloat(extra.amount || "0");
+      return sum + (Number.isFinite(amount) ? amount : 0);
+    }, 0);
+
 export const getOrderExtraStorageKey = (
   orderId: string,
   extra: OrderExtra,

@@ -3,19 +3,21 @@ import Header from "@/components/header";
 import ServiceDetailsCard from "@/components/service_details_card";
 import { Colors } from "@/constants/Colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
+  AppState,
+  Keyboard,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import RNModal from "react-native-modal";
 import DropDownPicker from "react-native-dropdown-picker";
 import {
   SafeAreaView,
@@ -56,6 +58,8 @@ export type Order = {
   };
 };
 
+const POLL_INTERVAL_MS = 5000;
+
 export default function Orders() {
   const { t } = useTranslation();
   const { isLoggedIn } = useAuth();
@@ -65,6 +69,7 @@ export default function Orders() {
   const [isLoading, setIsLoading] = useState(false);
   const [ratingOrderId, setRatingOrderId] = useState<string | null>(null);
   const [showRatingPopup, setShowRatingPopup] = useState(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Dropdown state
   const [open, setOpen] = useState(false);
@@ -75,39 +80,72 @@ export default function Orders() {
     { label: t("status_completed"), value: "completed" },
   ]);
 
-  useEffect(() => {
-    if (isLoggedIn) fetchOrders();
-  }, [isLoggedIn]);
+  const fetchOrders = useCallback(
+    async (showLoading = true) => {
+      const userId = await AsyncStorage.getItem("user_id");
+      if (!userId) return;
+      if (showLoading) setIsLoading(true);
 
-  const fetchOrders = async () => {
-    const userId = await AsyncStorage.getItem("user_id");
-    if (!userId) return;
-    setIsLoading(true);
+      const formData = new FormData();
+      formData.append("type", "get_data");
+      formData.append("table_name", "orders");
+      formData.append("user_id", userId);
+      formData.append("customer_review", userId);
 
-    const formData = new FormData();
-    formData.append("type", "get_data");
-    formData.append("table_name", "orders");
-    formData.append("user_id", userId);
-    formData.append("customer_review", userId);
-
-    console.log("[Orders] formData", formData);
-
-    try {
-      const response = await apiCall(formData);
-      console.log("[Orders] response", response);
-      if (response && response.data && response.data.length > 0) {
-        const orders = response.data;
-        setOrders(orders);
-      } else {
-        setOrders([]);
+      try {
+        const response = await apiCall(formData);
+        if (response && response.data && response.data.length > 0) {
+          setOrders(response.data);
+        } else {
+          setOrders([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch orders", error);
+        if (showLoading) {
+          Alert.alert(t("error"), t("add.somethingWentWrong"));
+        }
+      } finally {
+        if (showLoading) setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to fetch orders", error);
-      Alert.alert(t("error"), t("add.somethingWentWrong"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    [t],
+  );
+
+  const stopOrdersPolling = useCallback(() => {
+    if (!pollIntervalRef.current) return;
+    clearInterval(pollIntervalRef.current);
+    pollIntervalRef.current = null;
+  }, []);
+
+  const startOrdersPolling = useCallback(() => {
+    if (pollIntervalRef.current) return;
+    pollIntervalRef.current = setInterval(() => {
+      void fetchOrders(false);
+    }, POLL_INTERVAL_MS);
+  }, [fetchOrders]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoggedIn) {
+        stopOrdersPolling();
+        return;
+      }
+
+      void fetchOrders(true);
+      startOrdersPolling();
+
+      const appStateSub = AppState.addEventListener("change", (nextState) => {
+        if (nextState === "active") {
+          void fetchOrders(false);
+        }
+      });
+
+      return () => {
+        stopOrdersPolling();
+        appStateSub.remove();
+      };
+    }, [fetchOrders, isLoggedIn, startOrdersPolling, stopOrdersPolling]),
+  );
 
   const handleOrderScreen = (order: Order) => {
     if (order.status?.toLowerCase() === "cancelled") {
@@ -226,26 +264,29 @@ export default function Orders() {
       </View>
 
       {showRatingPopup && ratingOrderId && (
-        <Modal transparent visible={showRatingPopup} animationType="slide">
-          <View style={styles.overlay}>
-            <TouchableOpacity
-              style={styles.overlayBackground}
-              onPress={closeRatingPopup}
-            />
-            <View style={styles.popupContainer}>
-              <Popup
-                type="review"
-                setShowPopup={(value) => {
-                  if (value === null) {
-                    closeRatingPopup();
-                  }
-                }}
-                orderId={ratingOrderId}
-                onCompleted={handleRatingSubmitted}
-              />
-            </View>
-          </View>
-        </Modal>
+        <RNModal
+          isVisible={showRatingPopup}
+          onBackdropPress={() => {
+            Keyboard.dismiss();
+            closeRatingPopup();
+          }}
+          onBackButtonPress={closeRatingPopup}
+          style={styles.bottomModal}
+          backdropOpacity={0.5}
+          useNativeDriver
+          hideModalContentWhileAnimating
+        >
+          <Popup
+            type="review"
+            setShowPopup={(value) => {
+              if (value === null) {
+                closeRatingPopup();
+              }
+            }}
+            orderId={ratingOrderId}
+            onCompleted={handleRatingSubmitted}
+          />
+        </RNModal>
       )}
     </SafeAreaView>
   );
@@ -321,17 +362,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: vs(24),
   },
-  overlay: { flex: 1, justifyContent: "flex-end" },
-  overlayBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  popupContainer: {
-    backgroundColor: Colors.white,
-    width: "100%",
-    borderTopLeftRadius: ms(20),
-    borderTopRightRadius: ms(20),
-    justifyContent: "center",
-    alignItems: "center",
+  bottomModal: {
+    justifyContent: "flex-end",
+    margin: 0,
   },
 });
