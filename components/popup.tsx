@@ -44,12 +44,24 @@ type PopupProps = {
   orderId: string;
   extraAmount?: string;
   extraDetail?: string;
+  /** Prefill tip field (e.g. existing order tip when opening Pay Now). */
+  initialTipAmount?: string;
   onCompleted?: () => void;
   onTipForPayment?: (tipAmount: string) => void | Promise<void>;
   onCompleteToReview?: () => void;
   onOrderUpdated?: () => void | Promise<void>;
+  onArrivedDismissed?: () => void;
   onExtraAccepted?: () => void | Promise<void>;
   onExtraRejected?: () => void | Promise<void>;
+};
+
+const normalizeTipPrefill = (value?: string | number | null) => {
+  if (value == null) return "";
+  const raw = String(value).trim();
+  if (!raw) return "";
+  const amount = parseFloat(raw);
+  if (!Number.isFinite(amount) || amount <= 0) return "";
+  return Number.isInteger(amount) ? String(amount) : String(amount);
 };
 
 export default function Popup({
@@ -58,21 +70,30 @@ export default function Popup({
   orderId,
   extraAmount,
   extraDetail,
+  initialTipAmount,
   onCompleted,
   onTipForPayment,
   onCompleteToReview,
   onOrderUpdated,
+  onArrivedDismissed,
   onExtraAccepted,
   onExtraRejected,
 }: PopupProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [tipAmount, setTipAmount] = useState("");
+  const [tipAmount, setTipAmount] = useState(() =>
+    normalizeTipPrefill(initialTipAmount),
+  );
   const [rating, setRating] = useState(0);
   const [review, setReview] = useState("");
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const needsKeyboardLift = type === "tipup" || type === "review";
+
+  useEffect(() => {
+    if (type !== "tipup") return;
+    setTipAmount(normalizeTipPrefill(initialTipAmount));
+  }, [type, initialTipAmount]);
 
   const sheetStyle = [
     styles.sheet,
@@ -138,6 +159,9 @@ export default function Popup({
   };
 
   const handleHide = () => {
+    if (type === "arrived") {
+      onArrivedDismissed?.();
+    }
     setShowPopup(null);
   };
 

@@ -409,7 +409,7 @@
     "excellent": "Excellent",
     "extraAddedTitle": "Extra Added",
     "extraAddedDescription": "Your service provider has added extra charges to this order. Please review the details below.",
-    "extraAmountLabel": "Extra amount",
+    "extraAmountLabel": "Total Extra amount",
     "extraDescriptionLabel": "Description",
     "accept": "Accept",
     "reject": "Reject"

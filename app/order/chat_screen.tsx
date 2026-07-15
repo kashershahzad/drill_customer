@@ -42,6 +42,7 @@ import {
   OrderExtra,
   respondToOrderExtra,
   syncOrderExtrasForChat,
+  toMillisTimestamp,
 } from "~/utils/orderExtra";
 import { ms, s, vs } from "~/utils/responsive";
 
@@ -405,9 +406,15 @@ export default function ChatScreen({
 
   const displayMessages = useMemo(() => {
     const extraMessages = orderExtras.map((extra) => extraToChatMessage(extra));
-    return [...messages, ...extraMessages].sort(
-      (a, b) => a.timestamp - b.timestamp,
-    );
+    // Oldest → newest so messages after an extra render below it.
+    return [...messages, ...extraMessages].sort((a, b) => {
+      const diff = a.timestamp - b.timestamp;
+      if (diff !== 0) return diff;
+      // Same second: keep extras before regular chat that share the stamp.
+      if (a.msgType === "extra" && b.msgType !== "extra") return -1;
+      if (a.msgType !== "extra" && b.msgType === "extra") return 1;
+      return String(a.id).localeCompare(String(b.id));
+    });
   }, [messages, orderExtras]);
 
   const resolveMessageSender = (
@@ -510,7 +517,7 @@ export default function ChatScreen({
               id: String(msg.id),
               text: msg.msg,
               sender,
-              timestamp: Number(msg.datetime) || Date.now(),
+              timestamp: toMillisTimestamp(msg.datetime),
               msgType: msg.msg_type === "file" ? "file" : "msg",
               senderName,
               senderImage,

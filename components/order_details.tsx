@@ -3,20 +3,19 @@ import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { OrderType } from "~/types/dataTypes";
-import DashedSeparator from "./dashed_seprator";
 import { formatAppTime } from "~/utils/locale";
 import {
   formatExtraStatusLabel,
-  getOrderExtraDisplayAmount,
+  getOrderExtrasNetSummary,
   OrderExtra,
   parseExtraImages,
   parseOrderExtrasFromOrder,
-  resolveOrderBalancePayer,
   resolvePaidByLabel,
   sortOrderExtrasAscending,
 } from "~/utils/orderExtra";
+import { ms, s, vs } from "~/utils/responsive";
+import DashedSeparator from "./dashed_seprator";
 
 // Helper function to format timestamp (time only, no date)
 const formatTimestamp = (timestamp: string): string => {
@@ -89,7 +88,7 @@ const getTimelineEvents = (order: OrderType) => {
 
     if (label) {
       const timestamp = formatTimestamp(
-        entry.datetime || entry.timestamp || ""
+        entry.datetime || entry.timestamp || "",
       );
       events.push({ label, timestamp, status });
       seenStatuses.add(status);
@@ -106,7 +105,6 @@ const OrderDetailsSection = ({
   order: OrderType;
   extras?: OrderExtra[];
 }) => {
-  console.log("order", order);
   const { t } = useTranslation();
 
   // Get timeline events from history
@@ -116,26 +114,27 @@ const OrderDetailsSection = ({
   const providerUserId = String(
     order.provider?.id || order.provider_id || order.to_id || "",
   );
-  const balancePayer = resolveOrderBalancePayer(order);
-  const extraDisplayAmount = getOrderExtraDisplayAmount(order);
+  const extrasNet = getOrderExtrasNetSummary(
+    order,
+    extras || [],
+    customerUserId,
+    providerUserId,
+  );
+  const extraDisplayAmount = extrasNet.displayAmount;
   const paidByLabel =
-    balancePayer === "customer"
+    extrasNet.balancePayer === "customer"
       ? t("me")
-      : balancePayer === "provider"
+      : extrasNet.balancePayer === "provider"
         ? t("provider")
         : "";
 
   const imageBaseUrl = String(order.image_url || "");
   const orderExtras = sortOrderExtrasAscending(
-    extras && extras.length > 0
-      ? extras
-      : parseOrderExtrasFromOrder(order),
+    extras && extras.length > 0 ? extras : parseOrderExtrasFromOrder(order),
   );
 
   const showExtraBoxes = orderExtras.length > 0;
-  const showExtraSummary = Boolean(
-    extraDisplayAmount || balancePayer !== "unknown",
-  );
+  const showExtraSummary = Boolean(extraDisplayAmount || paidByLabel);
 
   const resolveImageUri = (fileName?: string) => {
     if (!fileName) return null;
@@ -299,11 +298,11 @@ const OrderDetailsSection = ({
         if (startedEvent && arrivedEvent && order.history) {
           // Find the "started" entry in history to get exact timestamp
           const startedHistory = order.history.find(
-            (h: any) => h.status?.toLowerCase() === "started"
+            (h: any) => h.status?.toLowerCase() === "started",
           );
           if (startedHistory) {
             const confirmTimestamp = formatTimestamp(
-              startedHistory.datetime || startedHistory.timestamp || ""
+              startedHistory.datetime || startedHistory.timestamp || "",
             );
             return (
               <>
@@ -365,7 +364,7 @@ const OrderDetailsSection = ({
                 h.status === "job_time_finished" ||
                 h.status === "bonus_time_started" ||
                 h.status === "bonus_time_ended" ||
-                h.status === "completed"
+                h.status === "completed",
             )
             .map((entry: any, index: number) => {
               let label = "";
@@ -391,7 +390,7 @@ const OrderDetailsSection = ({
               if (!label) return null;
 
               const timestamp = formatTimestamp(
-                entry.datetime || entry.timestamp || ""
+                entry.datetime || entry.timestamp || "",
               );
               const isCompleted = statusKey === "completed";
 
@@ -504,19 +503,19 @@ const OrderDetailsSection = ({
             <>
               <View style={styles.rowBetween}>
                 <Text style={styles.grayText}>
-                  {t("popup.extraAmountLabel", "Extra Amount")}:
+                  {t("popup.extraAmountLabel", "Total Extra Amount ")}:
                 </Text>
                 <Text style={styles.blueText}>SAR {extraDisplayAmount}</Text>
               </View>
-              <DashedSeparator />
+              {/* <DashedSeparator /> */}
             </>
           ) : null}
-          {paidByLabel ? (
+          {/* {paidByLabel ? (
             <View style={styles.rowBetween}>
               <Text style={styles.grayText}>{t("extraPaidBy")}:</Text>
               <Text style={styles.grayText}>{paidByLabel}</Text>
             </View>
-          ) : null}
+          ) : null} */}
         </>
       ) : null}
     </View>

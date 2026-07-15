@@ -28,7 +28,9 @@ export const normalizeOrderExtra = (
   paid_by: normalizeExtraField(row.paid_by as string | number),
   created_at: normalizeExtraField(row.created_at as string),
   timestamp: normalizeExtraField(row.timestamp as string),
-  status: normalizeExtraField(row.extra_status as string),
+  status: normalizeExtraField(
+    (row.status ?? row.extra_status) as string | number,
+  ),
   extra_accepted: normalizeExtraField(row.extra_accepted as string),
 });
 
@@ -76,9 +78,9 @@ export const resolvePaidByLabel = (
 };
 
 /**
- * Extra amount effect on customer payable total:
- * - paid by customer → ADD
- * - paid by provider → SUBTRACT (customer does not pay this)
+ * Accepted extras charged to the customer:
+ * - paid_by provider → add amount (reimburse provider)
+ * - paid_by customer ("Me") → exclude (already paid out of pocket; never subtract)
  */
 export const getAcceptedOrderExtrasAdjustment = (
   extras: OrderExtra[],
@@ -95,8 +97,7 @@ export const getAcceptedOrderExtrasAdjustment = (
       providerUserId || "",
     );
 
-    if (paidBy === "customer") return sum + amount;
-    if (paidBy === "provider") return sum - amount;
+    if (paidBy === "provider") return sum + amount;
     return sum;
   }, 0);
 
@@ -135,60 +136,97 @@ export const resolveOrderBalancePayer = (
   return "unknown";
 };
 
-export const getOrderExtraDisplayAmount = (order: OrderType): string => {
-  const payer = resolveOrderBalancePayer(order);
-  if (payer === "provider") {
-    return (
-      normalizeExtraField(order.extra_paid_by_provider_total) ||
-      normalizeExtraField(order.extra_amount)
-    );
-  }
-  if (payer === "customer") {
-    return (
-      normalizeExtraField(order.extra_paid_by_customer_total) ||
-      normalizeExtraField(order.extra_amount)
-    );
-  }
-  return (
-    normalizeExtraField(order.extra_paid_by_provider_total) ||
-    normalizeExtraField(order.extra_paid_by_customer_total) ||
-    normalizeExtraField(order.extra_amount)
+const resolveOrderPartyIds = (
+  order: OrderType,
+  customerUserId?: string,
+  providerUserId?: string,
+) => ({
+  customerId: customerUserId || String(order.user?.id || order.user_id || ""),
+  providerId:
+    providerUserId ||
+    String(order.provider?.id || order.provider_id || order.to_id || ""),
+});
+
+const resolveExtrasList = (order: OrderType, extras: OrderExtra[] = []) =>
+  extras.length > 0 ? extras : parseOrderExtrasFromOrder(order);
+
+/** Sum of accepted provider-paid extras (customer/"Me" extras are excluded). */
+export const getOrderExtrasNetSummary = (
+  order: OrderType,
+  extras: OrderExtra[] = [],
+  customerUserId?: string,
+  providerUserId?: string,
+): {
+  net: number;
+  payableTotal: number;
+  /** Provider-paid extras total charged to customer (for Extra Amount row) */
+  displayAmount: string;
+  /** Final customer payable after extras (base + provider extras) */
+  payableDisplayAmount: string;
+  balancePayer: "customer" | "provider" | "unknown";
+} => {
+  const { customerId, providerId } = resolveOrderPartyIds(
+    order,
+    customerUserId,
+    providerUserId,
   );
+  const list = resolveExtrasList(order, extras);
+  const net = getAcceptedOrderExtrasAdjustment(list, customerId, providerId);
+  const payableTotal = getOrderPayableTotal(
+    order.amount,
+    list,
+    customerId,
+    providerId,
+  );
+
+  if (net > 0) {
+    return {
+      net,
+      payableTotal,
+      displayAmount: net.toFixed(2),
+      payableDisplayAmount: payableTotal.toFixed(2),
+      balancePayer: "provider",
+    };
+  }
+  return {
+    net: 0,
+    payableTotal,
+    displayAmount: "",
+    payableDisplayAmount: payableTotal.toFixed(2),
+    balancePayer: "unknown",
+  };
 };
 
+/** @deprecated Prefer getOrderExtrasNetSummary — kept for callers */
+export const getOrderExtraDisplayAmount = (
+  order: OrderType,
+  extras: OrderExtra[] = [],
+  customerUserId?: string,
+  providerUserId?: string,
+): string =>
+  getOrderExtrasNetSummary(order, extras, customerUserId, providerUserId)
+    .displayAmount;
+
+/**
+ * Payable = order.amount + Σ(accepted extras paid by provider).
+ * paid_by customer ("Me") extras are not added (and never subtracted).
+ */
 export const getOrderPayableTotalFromOrder = (
   order: OrderType,
   extras: OrderExtra[] = [],
   customerUserId?: string,
   providerUserId?: string,
 ): number => {
-  const base = parseFloat(String(order.amount ?? "0"));
-  const safeBase = Number.isFinite(base) ? base : 0;
-  const payer = resolveOrderBalancePayer(order);
-
-  if (payer === "provider") {
-    const providerTotal = parseFloat(
-      String(order.extra_paid_by_provider_total ?? "0"),
-    );
-    const amount = Number.isFinite(providerTotal) ? providerTotal : 0;
-    return Math.max(0, safeBase - amount);
-  }
-
-  if (payer === "customer") {
-    const customerTotal = parseFloat(
-      String(
-        order.extra_paid_by_customer_total ?? order.extra_amount ?? "0",
-      ),
-    );
-    const amount = Number.isFinite(customerTotal) ? customerTotal : 0;
-    return Math.max(0, safeBase + amount);
-  }
-
-  return getOrderPayableTotal(
-    order.amount,
-    extras,
+  const { customerId, providerId } = resolveOrderPartyIds(
+    order,
     customerUserId,
     providerUserId,
+  );
+  return getOrderPayableTotal(
+    order.amount,
+    resolveExtrasList(order, extras),
+    customerId,
+    providerId,
   );
 };
 
@@ -389,14 +427,25 @@ export const parseExtraImages = (images?: string): ExtraImages => {
   return {};
 };
 
-export const parseExtraTimestamp = (createdAt?: string): number => {
-  if (!createdAt) return Date.now();
-  const normalized = createdAt.includes("T")
-    ? createdAt
-    : createdAt.replace(" ", "T");
+/** Normalize unix seconds/ms or date strings to ms since epoch. */
+export const toMillisTimestamp = (value?: string | number | null): number => {
+  if (value == null || value === "") return Date.now();
+
+  const raw = String(value).trim();
+  if (/^\d+(\.\d+)?$/.test(raw)) {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) return Date.now();
+    // Seconds are < 1e12; milliseconds are >= 1e12
+    return n < 1e12 ? Math.round(n * 1000) : Math.round(n);
+  }
+
+  const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
   const parsed = new Date(normalized).getTime();
   return Number.isNaN(parsed) ? Date.now() : parsed;
 };
+
+export const parseExtraTimestamp = (createdAt?: string): number =>
+  toMillisTimestamp(createdAt);
 
 export const normalizeExtraStatus = (status?: string): string =>
   String(status || "pending").toLowerCase();

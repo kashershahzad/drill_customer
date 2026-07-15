@@ -16,12 +16,15 @@ import {
 import RNModal from "react-native-modal";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Popup from "~/components/popup";
-import { useToast } from "~/components/ToastProvider";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { OrderType } from "~/types/dataTypes";
 import { apiCall } from "~/utils/api";
-import { calculateDistance } from "~/utils/distance";
+import {
+  claimArrivedPopup,
+  confirmArrivedPopup,
+  releaseArrivedPopup,
+} from "~/utils/arrivedPopup";
 import { setupNotificationListeners } from "~/utils/notification";
 import {
   fetchOrderExtras,
@@ -29,7 +32,6 @@ import {
   getOrderPayableTotalFromOrder,
   getLatestOrderExtra,
   getLatestPendingOrderExtra,
-  getOrderExtraActionErrorMessage,
   getOrderExtraStorageKey,
   hasOrderExtraContent,
   isOrderExtraActionSuccessful,
@@ -76,7 +78,6 @@ const BLOCKING_POPUP_TYPES = new Set<PopupType>([
 
 const OrderPlace: React.FC = () => {
   const { t } = useTranslation();
-  const { showToast } = useToast();
   const { tab } = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState<string>(
     tab ? String(tab) : "Details",
@@ -104,6 +105,7 @@ const OrderPlace: React.FC = () => {
   const orderIdRef = useRef<string | null>(null);
   const popupTypeRef = useRef<PopupType | null>(null);
   const proximityPopupShownRef = useRef<boolean>(false);
+  const isScreenFocusedRef = useRef(false);
   const pendingExtraStorageKeyRef = useRef<string | null>(null);
   const pendingOrderExtraRef = useRef<OrderExtra | null>(null);
   const queuedPendingExtraRef = useRef<{
@@ -226,6 +228,7 @@ const OrderPlace: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
+      isScreenFocusedRef.current = true;
 
       const init = async () => {
         try {
@@ -244,7 +247,6 @@ const OrderPlace: React.FC = () => {
           }
         } catch (error) {
           console.error("Initialization error:", error);
-          showToast(t("order.failedToInitialize"), "error");
         }
       };
 
@@ -252,6 +254,7 @@ const OrderPlace: React.FC = () => {
 
       return () => {
         isActive = false;
+        isScreenFocusedRef.current = false;
         stopProximityCheck();
         stopOrderPolling();
       };
@@ -276,7 +279,7 @@ const OrderPlace: React.FC = () => {
       }
     } else if (!previousOrder && orderData.status) {
       if (nextStatus === "arrived") {
-        showStatusNotification("arrived", undefined, true);
+        // Waiting for arrived push — don't auto-open from first fetch.
         deferExtraPopup = true;
       } else {
         lastShownStatusRef.current = isPastArrivedPhase(nextStatus)
@@ -452,14 +455,12 @@ const OrderPlace: React.FC = () => {
       acceptedExtraTotalRef.current = 0;
 
       if (showLoading) {
-        showToast(t("order.noOrderDetailsFound"), "error");
         setOrder(null);
       }
       return null;
     } catch (error) {
       console.error("Failed to fetch order details", error);
       if (showLoading) {
-        showToast(t("order.failedToFetchDetails"), "error");
         setOrder(null);
       }
       return null;
@@ -502,63 +503,8 @@ const OrderPlace: React.FC = () => {
     }, POLL_INTERVAL_MS);
   };
 
-  const checkProximity = async (orderData: OrderType) => {
-    try {
-      let customerLat: number | null = null;
-      let customerLng: number | null = null;
-
-      if (orderData.lat && orderData.lng) {
-        customerLat = parseFloat(orderData.lat);
-        customerLng = parseFloat(orderData.lng);
-      } else if (orderData.user?.lat && orderData.user?.lng) {
-        customerLat = parseFloat(orderData.user.lat);
-        customerLng = parseFloat(orderData.user.lng);
-      }
-
-      let providerLat: number | null = null;
-      let providerLng: number | null = null;
-
-      if (orderData.provider?.lat && orderData.provider?.lng) {
-        providerLat = parseFloat(orderData.provider.lat);
-        providerLng = parseFloat(orderData.provider.lng);
-      }
-
-      if (!customerLat || !customerLng) return;
-      if (!providerLat || !providerLng) return;
-
-      if (
-        isNaN(customerLat) ||
-        isNaN(customerLng) ||
-        isNaN(providerLat) ||
-        isNaN(providerLng)
-      ) {
-        console.error("❌ Proximity Check - Invalid coordinates:", {
-          customerLat,
-          customerLng,
-          providerLat,
-          providerLng,
-        });
-        return;
-      }
-
-      const distance = calculateDistance(
-        customerLat,
-        customerLng,
-        providerLat,
-        providerLng,
-      );
-
-      if (
-        distance <= 300 &&
-        normalizeStatus(orderData.status) === "arrived" &&
-        !proximityPopupShownRef.current
-      ) {
-        proximityPopupShownRef.current = true;
-        showStatusNotification("arrived", undefined, true);
-      }
-    } catch (error) {
-      console.error("❌ Error checking proximity:", error);
-    }
+  const checkProximity = async (_orderData: OrderType) => {
+    // Arrived popup is notification-driven only.
   };
 
   const startProximityCheck = (orderData: OrderType) => {
@@ -589,25 +535,27 @@ const OrderPlace: React.FC = () => {
   };
 
   const handleOrderStatusChange = (_oldStatus: string, newStatus: string) => {
+    // Arrived popup opens from push notification only — polling must not open it.
+    if (normalizeStatus(newStatus) === "arrived") return;
     showStatusNotification(newStatus);
   };
 
   const showStatusNotification = (
     status: string,
     _customMessage?: string,
-    forceShow: boolean = false,
+    _forceShow: boolean = false,
   ) => {
     const normalized = normalizeStatus(status);
 
     if (normalized === "arrived") {
-      if (
-        forceShow ||
-        (lastShownStatusRef.current !== "arrived" &&
-          popupTypeRef.current !== "arrived")
-      ) {
-        lastShownStatusRef.current = "arrived";
-        setPopupType("arrived");
-      }
+      if (!isScreenFocusedRef.current) return;
+      if (popupTypeRef.current === "arrived") return;
+
+      const oid = normalizeOrderId(orderIdRef.current);
+      if (oid && !claimArrivedPopup(oid)) return;
+
+      lastShownStatusRef.current = "arrived";
+      setPopupType("arrived");
       return;
     }
 
@@ -629,51 +577,33 @@ const OrderPlace: React.FC = () => {
   useEffect(() => {
     const handleNotificationPress = async (data: NotificationData) => {
       if (!data?.order_id) return;
+      if (!isScreenFocusedRef.current) return;
 
       const incomingOrderId = normalizeOrderId(data.order_id);
       const currentOrderId = normalizeOrderId(orderIdRef.current);
 
       if (currentOrderId && incomingOrderId !== currentOrderId) return;
 
-      await refreshOrderDetails(incomingOrderId);
-
-      const liveStatus = normalizeStatus(orderRef.current?.status);
       const notifiedStatus = normalizeStatus(data.status);
 
-      if (notifiedStatus === "arrived" || liveStatus === "arrived") {
-        showStatusNotification("arrived", undefined, true);
+      // Open arrived from this push first, then refresh (polling must not also open it).
+      if (notifiedStatus === "arrived") {
+        showStatusNotification("arrived");
+        await refreshOrderDetails(incomingOrderId);
         return;
       }
 
+      await refreshOrderDetails(incomingOrderId);
+
+      const liveStatus = normalizeStatus(orderRef.current?.status);
       if (!data.status || notifiedStatus !== liveStatus) return;
 
-      showStatusNotification(data.status, data.message, false);
+      showStatusNotification(data.status, data.message);
     };
 
-    const unsubscribe = setupNotificationListeners(
-      handleNotificationPress,
-      (payload) => {
-        const notifiedStatus = normalizeStatus(payload.data?.status);
-        if (notifiedStatus === "arrived") {
-          void handleNotificationPress({
-            order_id: payload.data?.order_id,
-            status: payload.data?.status,
-            message: payload.data?.message,
-          });
-          return;
-        }
-
-        // Refresh order silently — no top toast for push alerts.
-        const orderIdFromPayload = payload.data?.order_id;
-        if (orderIdFromPayload) {
-          void handleNotificationPress({
-            order_id: orderIdFromPayload,
-            status: payload.data?.status,
-            message: payload.data?.message,
-          });
-        }
-      },
-    );
+    // Single listener path — setupNotificationListeners used to call
+    // foreground + press handlers and opened arrived twice.
+    const unsubscribe = setupNotificationListeners(handleNotificationPress);
     return () => {
       unsubscribe();
     };
@@ -758,7 +688,6 @@ const OrderPlace: React.FC = () => {
             preferredPayment,
             onStarted: () => setIsPayingNow(false),
             onSuccess: async () => {
-              showToast(t("order.paymentSuccess"), "success");
               await refreshOrderDetails(String(parsedOrderId));
               resolve();
             },
@@ -769,7 +698,6 @@ const OrderPlace: React.FC = () => {
         // console.log("[Pay Now] Tap payment response:", response);
       } catch (error) {
         console.error("[Pay Now] Error:", error);
-        showToast(t("order.paymentFailed"), "error");
       } finally {
         setIsPayingNow(false);
       }
@@ -787,8 +715,6 @@ const OrderPlace: React.FC = () => {
       order?.to_id,
       orderId,
       userId,
-      showToast,
-      t,
       refreshOrderDetails,
     ],
   );
@@ -796,7 +722,6 @@ const OrderPlace: React.FC = () => {
   const handlePay = () => {
     if (isPayingNow || !orderId) return;
     if (isCashPayment()) {
-      showToast(t("order.cashPaymentAtService"), "info");
       return;
     }
     setPopupType("tipup");
@@ -852,17 +777,11 @@ const OrderPlace: React.FC = () => {
 
     const parsedOrderId =
       parseStoredOrderId(orderId) ?? normalizeOrderId(orderId);
-    if (!parsedOrderId) {
-      showToast(t("order.failedToAcceptExtra"), "error");
-      return;
-    }
+    if (!parsedOrderId) return;
 
     const extraId =
       pendingOrderExtraRef.current?.id ?? orderExtraRef.current?.id;
-    if (!extraId) {
-      showToast(t("order.failedToAcceptExtra"), "error");
-      return;
-    }
+    if (!extraId) return;
 
     isExtraActionRef.current = true;
     try {
@@ -878,15 +797,10 @@ const OrderPlace: React.FC = () => {
         setPopupType(null);
         await refreshOrderDetails(parsedOrderId);
       } else {
-        showToast(
-          getOrderExtraActionErrorMessage(response) ||
-            t("order.failedToAcceptExtra"),
-          "error",
-        );
+        console.error("[OrderPlace] accept extra failed:", response);
       }
     } catch (error) {
       console.error("[OrderPlace] accept extra failed:", error);
-      showToast(t("order.failedToAcceptExtra"), "error");
     } finally {
       isExtraActionRef.current = false;
     }
@@ -897,17 +811,11 @@ const OrderPlace: React.FC = () => {
 
     const parsedOrderId =
       parseStoredOrderId(orderId) ?? normalizeOrderId(orderId);
-    if (!parsedOrderId) {
-      showToast(t("order.failedToRejectExtra"), "error");
-      return;
-    }
+    if (!parsedOrderId) return;
 
     const extraId =
       pendingOrderExtraRef.current?.id ?? orderExtraRef.current?.id;
-    if (!extraId) {
-      showToast(t("order.failedToRejectExtra"), "error");
-      return;
-    }
+    if (!extraId) return;
 
     isExtraActionRef.current = true;
     try {
@@ -927,15 +835,10 @@ const OrderPlace: React.FC = () => {
         setPopupType(null);
         await refreshOrderDetails(parsedOrderId);
       } else {
-        showToast(
-          getOrderExtraActionErrorMessage(response) ||
-            t("order.failedToRejectExtra"),
-          "error",
-        );
+        console.error("[OrderPlace] reject extra failed:", response);
       }
     } catch (error) {
       console.error("[OrderPlace] reject extra failed:", error);
-      showToast(t("order.failedToRejectExtra"), "error");
     } finally {
       isExtraActionRef.current = false;
     }
@@ -945,6 +848,7 @@ const OrderPlace: React.FC = () => {
     if (!orderId) return;
 
     const parsedOrderId = parseStoredOrderId(orderId) ?? orderId;
+    confirmArrivedPopup(parsedOrderId);
     lastShownStatusRef.current = "started";
 
     setOrder((prev) => {
@@ -957,6 +861,15 @@ const OrderPlace: React.FC = () => {
     setPopupType(null);
     await refreshOrderDetails(parsedOrderId);
     // Extra popup (if queued) will flush when popupType becomes null.
+  };
+
+  const handleArrivedDismissed = () => {
+    const parsedOrderId =
+      parseStoredOrderId(orderIdRef.current) ?? orderIdRef.current ?? "";
+    releaseArrivedPopup(parsedOrderId);
+    if (lastShownStatusRef.current === "arrived") {
+      lastShownStatusRef.current = null;
+    }
   };
 
   const handleCancel = async () => {
@@ -981,14 +894,12 @@ const OrderPlace: React.FC = () => {
         const response = await apiCall(formData);
         if (response && response.result === true) {
           await AsyncStorage.removeItem("order_id");
-          showToast(t("order.orderCancelledSuccess"), "success");
           router.replace("/(tabs)/orders");
         } else {
-          showToast(t("order.failedToCancel"), "error");
+          console.error("Failed to cancel order:", response);
         }
       } catch (error) {
         console.error("Error cancelling order:", error);
-        showToast(t("order.errorCancelling"), "error");
       }
     }
   };
@@ -1038,11 +949,10 @@ const OrderPlace: React.FC = () => {
           setPopupType(null);
           router.replace("/(tabs)");
         } else {
-          showToast(t("order.failedToComplete"), "error");
+          console.error("Failed to complete order:", response);
         }
       } catch (error) {
         console.error("Error completing order:", error);
-        showToast(t("order.errorCompleting"), "error");
       }
     }
   };
@@ -1270,6 +1180,11 @@ const OrderPlace: React.FC = () => {
             orderId={orderId || ""}
             extraAmount={pendingOrderExtra?.amount ?? orderExtra?.amount}
             extraDetail={pendingOrderExtra?.detail ?? orderExtra?.detail}
+            initialTipAmount={
+              popupType === "tipup"
+                ? String(order?.tip_amount ?? order?.tip ?? "")
+                : undefined
+            }
             onCompleted={handleReviewSubmitted}
             onCompleteToReview={
               manualCompletionFlow ? handleCompleteToReview : undefined
@@ -1279,6 +1194,9 @@ const OrderPlace: React.FC = () => {
             }
             onOrderUpdated={
               popupType === "arrived" ? handleArrivedConfirmed : undefined
+            }
+            onArrivedDismissed={
+              popupType === "arrived" ? handleArrivedDismissed : undefined
             }
             onExtraAccepted={handleExtraAccepted}
             onExtraRejected={handleExtraRejected}

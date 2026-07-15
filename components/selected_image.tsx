@@ -13,8 +13,8 @@ import {
   View,
 } from "react-native";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { apiCall } from "~/utils/api";
+import { ms, s, vs } from "~/utils/responsive";
 
 type Props = {
   onSelectImage?: (fileName: string) => void;
@@ -28,7 +28,7 @@ export default function SelectedImage({
   disabled = false,
 }: Props) {
   const [localImage, setLocalImage] = useState<string | null>(
-    selectedImage || null
+    selectedImage || null,
   );
   const { t } = useTranslation();
 
@@ -51,7 +51,10 @@ export default function SelectedImage({
       if (source === "camera") {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== "granted") {
-          Alert.alert(t("alerts.permissions"), t("alerts.cameraPermissionRequired"));
+          Alert.alert(
+            t("alerts.permissions"),
+            t("alerts.cameraPermissionRequired"),
+          );
           return;
         }
         result = await ImagePicker.launchCameraAsync({
@@ -62,7 +65,10 @@ export default function SelectedImage({
         const { status } =
           await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== "granted") {
-          Alert.alert(t("alerts.permissions"), t("alerts.galleryPermissionRequired"));
+          Alert.alert(
+            t("alerts.permissions"),
+            t("alerts.galleryPermissionRequired"),
+          );
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync({
@@ -120,7 +126,10 @@ export default function SelectedImage({
         throw new Error(response.message || t("alerts.uploadFailed"));
       }
     } catch (err: any) {
-      Alert.alert(t("alerts.error"), err.message || t("alerts.somethingWentWrong"));
+      Alert.alert(
+        t("alerts.error"),
+        err.message || t("alerts.somethingWentWrong"),
+      );
     }
   };
 
@@ -144,9 +153,7 @@ export default function SelectedImage({
           </View>
         )}
         <Text style={[styles.text, disabled && styles.disabledText]}>
-          {displayImage
-            ? t("imageSelected")
-            : t("uploadPictureHere")}
+          {displayImage ? t("imageSelected") : t("uploadPictureHere")}
         </Text>
       </TouchableOpacity>
     </>
@@ -154,11 +161,44 @@ export default function SelectedImage({
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: ms(17), fontFamily: FONTS.semiBold, marginBottom: vs(8), color: Colors.secondary },
-  uploadContainer: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.primary300, paddingHorizontal: s(14), paddingVertical: vs(14), borderRadius: ms(10), opacity: 1 },
-  iconWrapper: { backgroundColor: "white", borderRadius: ms(12), padding: s(10) },
-  image: { width: s(46), height: s(46), borderRadius: ms(8), backgroundColor: "white" },
-  text: { marginLeft: s(14), color: Colors.secondary300, flex: 1, fontSize: ms(14) },
+  title: {
+    fontSize: ms(17),
+    fontFamily: FONTS.semiBold,
+    marginBottom: vs(8),
+    color: Colors.secondary,
+  },
+  uploadContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.primary300,
+    paddingHorizontal: s(14),
+    paddingVertical: vs(14),
+    borderRadius: ms(10),
+    opacity: 1,
+  },
+  iconWrapper: {
+    backgroundColor: "white",
+    borderRadius: ms(12),
+    padding: s(10),
+  },
+  image: {
+    width: s(46),
+    height: s(46),
+    borderRadius: ms(8),
+    backgroundColor: "white",
+  },
+  text: {
+    marginLeft: s(14),
+    color: Colors.secondary300,
+    flex: 1,
+    fontSize: ms(14),
+  },
   disabledText: { color: Colors.secondary, opacity: 0.5 },
-  disabledInfoText: { color: Colors.secondary300, fontSize: ms(12), marginTop: vs(8), fontFamily: FONTS.regular, textAlign: "center" },
+  disabledInfoText: {
+    color: Colors.secondary300,
+    fontSize: ms(12),
+    marginTop: vs(8),
+    fontFamily: FONTS.regular,
+    textAlign: "center",
+  },
 });

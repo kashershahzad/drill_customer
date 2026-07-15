@@ -144,12 +144,14 @@ export const setupNotificationListeners = (
       const body = remoteMessage.notification?.body;
       const data = toNotificationData(remoteMessage.data);
 
-      if (onForegroundNotification && (title || body || data?.message)) {
+      // Foreground: call exactly one path to avoid duplicate UI (e.g. arrived popup x2).
+      if (onForegroundNotification) {
         onForegroundNotification({
           title,
           body,
           data,
         });
+        return;
       }
 
       if (data && Object.keys(data).length > 0) {

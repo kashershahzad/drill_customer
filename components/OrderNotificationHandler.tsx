@@ -98,14 +98,9 @@ export default function OrderNotificationHandler() {
 
     void init();
 
-    const unsubscribe = setupNotificationListeners(
-      (data) => {
-        void handleNotificationData(data);
-      },
-      () => {
-        // Silent — order screens handle UI updates via polling/modals.
-      },
-    );
+    const unsubscribe = setupNotificationListeners((data) => {
+      void handleNotificationData(data);
+    });
 
     const appStateSub = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {

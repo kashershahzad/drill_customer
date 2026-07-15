@@ -14,19 +14,27 @@ import {
   Platform,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import RNModal from "react-native-modal";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import Button from "~/components/button";
-import Header from "~/components/header";
 import Popup from "~/components/popup";
 import ProviderCard from "~/components/provider_card";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { OrderType } from "~/types/dataTypes";
 import { apiCall } from "~/utils/api";
+import {
+  claimArrivedPopup,
+  confirmArrivedPopup,
+  releaseArrivedPopup,
+} from "~/utils/arrivedPopup";
 import { setupNotificationListeners } from "~/utils/notification";
 import { ms, s, vs } from "~/utils/responsive";
 
@@ -96,7 +104,16 @@ const getRegionForCoordinates = (points: MapCoordinate[]) => {
 
 export default function Track() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(800)).current;
+
+  const handleGoBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace("/order/order_place");
+  }, []);
   const [location, setLocation] = useState<LocationStateType | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -120,6 +137,7 @@ export default function Track() {
   const orderRef = useRef<OrderType | null>(null);
   const popupTypeRef = useRef<PopupType | null>(null);
   const lastShownStatusRef = useRef<string | null>(null);
+  const isScreenFocusedRef = useRef(false);
   const GOOGLE_MAPS_API_KEY = "AIzaSyAQiilQ_i4LRPFyMhfLB5ZT3UGMTIxqL0Y";
 
   const normalizeOrderId = (id: string | number | null | undefined): string => {
@@ -144,41 +162,31 @@ export default function Track() {
     setShowPopup(!!popupType);
   }, [popupType]);
 
-  const showArrivedPopup = useCallback(
-    (forceShow = false) => {
-      if (popupTypeRef.current === "arrived") return;
-      if (!forceShow && lastShownStatusRef.current === "arrived") {
-        return;
+  const showArrivedPopup = useCallback(() => {
+    if (!isScreenFocusedRef.current) return;
+    if (popupTypeRef.current === "arrived") return;
+
+    const oid = normalizeOrderId(orderId);
+    if (oid && !claimArrivedPopup(oid)) return;
+
+    lastShownStatusRef.current = "arrived";
+    setPopupType("arrived");
+  }, [orderId]);
+
+  const applyOrderUpdate = useCallback((orderData: OrderType) => {
+    const nextStatus = normalizeStatus(orderData.status);
+
+    // Arrived popup opens from push only — polling/fetch must not open it.
+    if (nextStatus === "started") {
+      lastShownStatusRef.current = "started";
+      if (popupTypeRef.current === "arrived") {
+        setPopupType(null);
       }
+    }
 
-      lastShownStatusRef.current = "arrived";
-      setPopupType("arrived");
-    },
-    [],
-  );
-
-  const applyOrderUpdate = useCallback(
-    (orderData: OrderType) => {
-      const previousOrder = orderRef.current;
-      const previousStatus = normalizeStatus(previousOrder?.status);
-      const nextStatus = normalizeStatus(orderData.status);
-
-      if (nextStatus === "arrived") {
-        if (!previousOrder || previousStatus !== "arrived") {
-          showArrivedPopup(true);
-        }
-      } else if (nextStatus === "started") {
-        lastShownStatusRef.current = "started";
-        if (popupTypeRef.current === "arrived") {
-          setPopupType(null);
-        }
-      }
-
-      setOrder(orderData);
-      orderRef.current = orderData;
-    },
-    [showArrivedPopup],
-  );
+    setOrder(orderData);
+    orderRef.current = orderData;
+  }, []);
 
   // Fetch route from Google Directions API
   const decodePolyline = (
@@ -287,6 +295,7 @@ export default function Track() {
   const handleArrivedConfirmed = useCallback(async () => {
     if (!orderId) return;
 
+    confirmArrivedPopup(orderId);
     lastShownStatusRef.current = "started";
     setOrder((prev) => {
       if (!prev) return prev;
@@ -297,6 +306,13 @@ export default function Track() {
     setPopupType(null);
     await fetchOrderDetails(false);
   }, [fetchOrderDetails, orderId]);
+
+  const handleArrivedDismissed = useCallback(() => {
+    releaseArrivedPopup(orderId);
+    if (lastShownStatusRef.current === "arrived") {
+      lastShownStatusRef.current = null;
+    }
+  }, [orderId]);
 
   const stopOrderPolling = useCallback(() => {
     if (orderPollIntervalRef.current) {
@@ -388,10 +404,12 @@ export default function Track() {
     useCallback(() => {
       if (!orderId) return;
 
+      isScreenFocusedRef.current = true;
       fetchOrderDetails(true);
       startOrderPolling();
 
       return () => {
+        isScreenFocusedRef.current = false;
         stopOrderPolling();
       };
     }, [orderId, fetchOrderDetails, startOrderPolling, stopOrderPolling]),
@@ -400,36 +418,24 @@ export default function Track() {
   useEffect(() => {
     const handleNotificationData = async (data: NotificationData) => {
       if (!data?.order_id) return;
+      if (!isScreenFocusedRef.current) return;
 
       const incomingOrderId = normalizeOrderId(data.order_id);
       const currentOrderId = normalizeOrderId(orderId);
       if (currentOrderId && incomingOrderId !== currentOrderId) return;
 
-      await fetchOrderDetails(false);
-
-      const liveStatus = normalizeStatus(orderRef.current?.status);
       const notifiedStatus = normalizeStatus(data.status);
 
-      if (notifiedStatus === "arrived" || liveStatus === "arrived") {
-        showArrivedPopup(true);
+      if (notifiedStatus === "arrived") {
+        showArrivedPopup();
+        await fetchOrderDetails(false);
+        return;
       }
+
+      await fetchOrderDetails(false);
     };
 
-    const unsubscribe = setupNotificationListeners(
-      (data) => {
-        void handleNotificationData(data);
-      },
-      (payload) => {
-        const orderIdFromPayload = payload.data?.order_id;
-        if (!orderIdFromPayload) return;
-
-        void handleNotificationData({
-          order_id: orderIdFromPayload,
-          status: payload.data?.status,
-          message: payload.data?.message,
-        });
-      },
-    );
+    const unsubscribe = setupNotificationListeners(handleNotificationData);
 
     return () => {
       unsubscribe();
@@ -586,6 +592,14 @@ export default function Track() {
   if (isLoading && !errorMsg && !order) {
     return (
       <View style={styles.fullScreenLoading}>
+        <TouchableOpacity
+          style={[styles.backButton, { top: insets.top + vs(8) }]}
+          onPress={handleGoBack}
+          accessibilityRole="button"
+          accessibilityLabel={t("header.back")}
+        >
+          <Ionicons name="chevron-back" size={s(22)} color={Colors.secondary} />
+        </TouchableOpacity>
         <ActivityIndicator size="large" color={Colors.primary} />
         <Text style={styles.loadingText}>{t("order.loadingOrderDetails")}</Text>
       </View>
@@ -604,7 +618,7 @@ export default function Track() {
           <Text style={styles.errorText}>{errorMsg}</Text>
           <Button
             title={t("goBack")}
-            onPress={() => router.back()}
+            onPress={handleGoBack}
             variant="primary"
           />
         </View>
@@ -662,16 +676,15 @@ export default function Track() {
         </View>
       )}
 
-      {/* Header */}
-      <View style={styles.header}>
-        <Header
-          backBtn={true}
-          title={t("order.trackCustomer")}
-          icon={true}
-          support={true}
-          backAddress="/order/order_place"
-        />
-      </View>
+      {/* Top-left back button over the map */}
+      <TouchableOpacity
+        style={[styles.backButton, { top: insets.top + vs(8) }]}
+        onPress={handleGoBack}
+        accessibilityRole="button"
+        accessibilityLabel={t("header.back")}
+      >
+        <Ionicons name="chevron-back" size={s(22)} color={Colors.secondary} />
+      </TouchableOpacity>
 
       {/* Animated Bottom Sheet */}
       <Animated.View
@@ -745,6 +758,7 @@ export default function Track() {
             }}
             orderId={orderId}
             onOrderUpdated={handleArrivedConfirmed}
+            onArrivedDismissed={handleArrivedDismissed}
           />
         </RNModal>
       )}
@@ -781,7 +795,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: vs(18),
   },
-  header: { paddingTop: vs(50), paddingHorizontal: s(16) },
+  backButton: {
+    position: "absolute",
+    left: s(16),
+    zIndex: 20,
+    width: s(40),
+    height: s(40),
+    borderRadius: ms(20),
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
   statusContainer: {
     flexDirection: "row",
     alignItems: "center",
