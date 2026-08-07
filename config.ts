@@ -1,10 +1,12 @@
 export const BASE_URL = "https://7tracking.com/saudiservices/api.php";
 
 /** Tap Payments public key (Checkout SDK + client-side tokenization). */
-export const TAP_PUBLIC_KEY = "pk_test_YEw8H7SPKIUx3BDhOMC6lfqp";
+export const TAP_PUBLIC_KEY =
+  process.env.EXPO_PUBLIC_TAP_PUBLIC_KEY ?? "pk_live_y3UaSZNkJ5yl3oinhrSVYp9dAWO8m";
 
 /** Tap merchant ID from dashboard. Optional for single-merchant accounts. */
-export const TAP_MERCHANT_ID = "";
+export const TAP_MERCHANT_ID =
+  process.env.EXPO_PUBLIC_TAP_MERCHANT_ID ?? "68013152";
 
 export const TAP_SANDBOX = true; // false in production
 export const TAP_CURRENCY = "SAR";
@@ -15,9 +17,14 @@ export const TAP_WEBHOOK_URL =
 
 export const PAYMENT_REDIRECT_URL = "drillcustomer://orders";
 
-/** Sandbox / production secret — used for checkout hash (prefer backend in production). */
-export const TAP_SANDBOX_SECRET_KEY = "sk_test_cqx0vA679EKZuw8XGlO5NTJr";
-export const TAP_PRODUCTION_SECRET_KEY = "sk_live_YOUR_KEY";
+/**
+ * Secret keys — never commit real values.
+ * Set in `.env` (see `.env.example`). Prefer backend hash in production.
+ */
+export const TAP_SANDBOX_SECRET_KEY =
+  process.env.EXPO_PUBLIC_TAP_SANDBOX_SECRET_KEY ?? "";
+export const TAP_PRODUCTION_SECRET_KEY =
+  process.env.EXPO_PUBLIC_TAP_PRODUCTION_SECRET_KEY ?? "";
 
 /** Use PHP `create_tap_checkout_hash` when implemented; off avoids bad hashes during dev. */
 export const TAP_USE_BACKEND_CHECKOUT_HASH = false;

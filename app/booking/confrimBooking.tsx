@@ -29,7 +29,7 @@ import { BOOKING_PAY_LATER_KEY } from "~/utils/booking";
 import { formatAppDate, formatAppTime } from "~/utils/locale";
 import { ms, s, vs } from "~/utils/responsive";
 // import { createTapCharge } from "~/utils/tapPayment";
-import { startTapPayment } from "~/utils/tapPayment";
+import { startTapPayment, toTapPreferredPayment } from "~/utils/tapPayment";
 
 const TAP_PAYMENT_ENABLED = true;
 
@@ -161,7 +161,8 @@ export default function ConfirmBooking() {
     const isLaterOrder = isPayLaterFlow() || payLater;
     const paymentMethod = isLaterOrder ? "later" : paymentMethodId || "pending";
     const methodDetails =
-      isLaterOrder && ["online", "visa", "apple", "google"].includes(paymentMethodId)
+      isLaterOrder &&
+      ["online", "visa", "apple", "google"].includes(paymentMethodId)
         ? paymentMethodId
         : paymentMethod;
     const formData = new FormData();
@@ -252,6 +253,7 @@ export default function ConfirmBooking() {
       startTapPayment({
         orderId,
         amount: totalAmount,
+        preferredPayment: toTapPreferredPayment(paymentMethodId),
         onStarted: () => setIsSubmitting(false),
         onSuccess: () => {
           router.push("/booking/confrimedBooking");

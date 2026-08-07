@@ -1,4 +1,5 @@
 import Appwallet from "@/assets/images/appwallet.png";
+import ApplePay from "@/assets/images/applepay.png";
 import Cashonpay from "@/assets/images/cop.png";
 import Visa from "@/assets/images/visa.png";
 import Button from "@/components/button";
@@ -12,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -48,6 +50,9 @@ export default function Booking2Screen() {
   const paymentMethods = useMemo(
     () => [
       { id: "visa", image: Visa, name: t("booking.visacard") },
+      ...(Platform.OS === "ios"
+        ? [{ id: "apple", image: ApplePay, name: t("booking.applepay") }]
+        : []),
       { id: "wallet", image: Appwallet, name: t("booking.appwallet") },
       { id: "cash", image: Cashonpay, name: t("booking.cashonpay") },
     ],
@@ -136,7 +141,8 @@ export default function Booking2Screen() {
       await AsyncStorage.removeItem(BOOKING_PAY_LATER_KEY);
     }
 
-    const isTapPayment = selectedPayment === "visa";
+    const isTapPayment =
+      selectedPayment === "visa" || selectedPayment === "apple";
 
     router.push({
       pathname: "/booking/confrimBooking",

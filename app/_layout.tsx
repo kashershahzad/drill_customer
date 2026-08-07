@@ -26,9 +26,8 @@ export default function RootLayout() {
     if (fontError) console.error("Font loading error:", fontError);
   }, [fontError]);
 
-  useEffect(() => {
-    if (ready) SplashScreen.hideAsync();
-  }, [ready]);
+  // Native splash is hidden from app/index.tsx after splash.png is ready
+  // to avoid a white flash between native splash and the branded splash.
 
   useEffect(() => {
     if (!ready) return;

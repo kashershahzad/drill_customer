@@ -18,7 +18,7 @@ import Header from "~/components/header";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
-import { getLocalizedText } from "~/utils/locale";
+import { getLocalizedList, getLocalizedText } from "~/utils/locale";
 import { ms, s, vs } from "~/utils/responsive";
 import { getTabBarContentPadding } from "~/utils/tabBar";
 
@@ -29,6 +29,7 @@ interface Package {
   hours: number;
   price: number;
   features?: string[];
+  features_translation?: string;
 }
 
 export default function Packages() {
@@ -64,6 +65,8 @@ export default function Packages() {
           hours: parseInt(plan.hours) || 0,
           price: parseFloat(plan.price) || 0,
           features: plan.features ? JSON.parse(plan.features) : [],
+          features_translation:
+            plan.features_translation || plan.features_translations || "",
         }));
 
         setPackages(transformedPlans);
@@ -88,6 +91,10 @@ export default function Packages() {
   const renderPackageCard = (pkg: Package) => {
     const isSelected = selectedPackage?.id === pkg.id;
     const packageName = getLocalizedText(pkg.translation, pkg.name);
+    const packageFeatures = getLocalizedList(
+      pkg.features_translation,
+      pkg.features || [],
+    );
 
     return (
       <TouchableOpacity
@@ -108,10 +115,10 @@ export default function Packages() {
           </View>
         </View>
 
-        {isSelected && pkg.features && pkg.features.length > 0 && (
+        {isSelected && packageFeatures.length > 0 && (
           <>
             <DashedSeparator />
-            {pkg.features.map((feature, index) => (
+            {packageFeatures.map((feature, index) => (
               <View key={index} style={styles.featureItem}>
                 <Text style={styles.bulletPoint}>•</Text>
                 <Text style={styles.featureText}>{feature}</Text>

@@ -20,14 +20,36 @@ type Category = {
   id: string;
   image: string;
   name: string;
+  translations?: string;
 };
 
 type CategoriesProps = {
   searchQuery?: string;
 };
 
+const resolveCategoryName = (
+  name: string,
+  translations: string | undefined,
+  language: string,
+) => {
+  if (!translations) return name;
+
+  try {
+    const parsed = JSON.parse(translations) as Record<string, string>;
+    const lang = language?.startsWith("ar") ? "ar" : "en";
+    const translated = parsed[lang]?.trim();
+    if (translated) return translated;
+    const english = parsed.en?.trim();
+    if (english) return english;
+  } catch {
+    // fall through to default name
+  }
+
+  return name;
+};
+
 export default function Categories({ searchQuery = "" }: CategoriesProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isLoggedIn, setPendingBooking } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -50,6 +72,7 @@ export default function Categories({ searchQuery = "" }: CategoriesProps) {
             id: item.id,
             image: item.thumb,
             name: item.name,
+            translations: item.translations,
           }));
 
           setCategories(mappedCategories);
@@ -66,19 +89,24 @@ export default function Categories({ searchQuery = "" }: CategoriesProps) {
     getCategories();
   }, []);
 
+  const localizedCategories = categories.map((category) => ({
+    ...category,
+    name: resolveCategoryName(category.name, category.translations, i18n.language),
+  }));
+
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filteredCategories =
     normalizedQuery.length > 0
-      ? categories.filter((category) =>
-          category.name.toLowerCase().includes(normalizedQuery)
+      ? localizedCategories.filter((category) =>
+          category.name.toLowerCase().includes(normalizedQuery),
         )
-      : categories;
+      : localizedCategories;
   const isSearching = normalizedQuery.length > 0;
   const visibleData = isSearching
     ? filteredCategories
     : expanded
-      ? categories
-      : categories.slice(0, 6);
+      ? localizedCategories
+      : localizedCategories.slice(0, 6);
 
   const handleBooking = async (category: Category) => {
     if (!isLoggedIn) {
@@ -106,7 +134,7 @@ export default function Categories({ searchQuery = "" }: CategoriesProps) {
       {/* Header Section */}
       <View style={styles.header}>
         <Text style={styles.title}>{t("categories")}</Text>
-        {!isSearching && categories.length > 6 && (
+        {!isSearching && localizedCategories.length > 6 && (
           <TouchableOpacity onPress={() => setExpanded(!expanded)}>
             <Text style={styles.seeAllText}>
               {expanded ? t("showless") : t("seeall")}

@@ -4,7 +4,7 @@ import * as LocationService from "expo-location";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FONTS } from "~/constants/Fonts";
 import { ms, s, vs } from "~/utils/responsive";
 
@@ -44,11 +44,18 @@ export default function SelectedLocation({
 
         setIsLoadingLocation(true);
 
-        let { status } =
-          await LocationService.requestForegroundPermissionsAsync();
+        const existing =
+          await LocationService.getForegroundPermissionsAsync();
+        let status = existing.status;
+
+        // Request only once when undecided — never re-prompt after deny
+        if (status === "undetermined") {
+          const requested =
+            await LocationService.requestForegroundPermissionsAsync();
+          status = requested.status;
+        }
 
         if (status !== "granted") {
-          console.log("Location permission denied");
           setIsLoadingLocation(false);
           return;
         }
@@ -73,10 +80,6 @@ export default function SelectedLocation({
         }
       } catch (error) {
         console.error("Error getting location:", error);
-        Alert.alert(
-          t("booking.locationError"),
-          t("booking.unableToRetrieveLocation"),
-        );
       } finally {
         setIsLoadingLocation(false);
       }

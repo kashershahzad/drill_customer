@@ -10,6 +10,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -112,9 +113,13 @@ export default function BookingScreen() {
   ]);
 
   const handleNext = () => {
-    // Ensure we have lat/lng - use state if params don't have it
     const finalLat = latlng.latitude || params.latitude;
     const finalLng = latlng.longitude || params.longitude;
+
+    if (!selectedLocation || !finalLat || !finalLng) {
+      Alert.alert(t("error"), t("booking.locationRequired"));
+      return;
+    }
 
     router.push({
       pathname: "/booking/booking2",

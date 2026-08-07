@@ -1,7 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FONTS } from "~/constants/Fonts";
-import { formatAppDate, formatAppTime } from "~/utils/locale";
+import {
+  formatAppDate,
+  formatAppTime,
+  getLocalizedOrderStatus,
+  getLocalizedPaymentStatus,
+  getLocalizedText,
+} from "~/utils/locale";
 import { ms, s, vs } from "~/utils/responsive";
 import { Colors } from "../constants/Colors";
 import DashedSeprator from "./dashed_seprator";
@@ -143,7 +149,10 @@ export default function ServiceDetailsCard({
         <View style={styles.orderInfo}>
           <View style={styles.orderHeader}>
             <Text style={styles.title}>
-              {order?.category?.name || t("serviceOrder")}
+              {getLocalizedText(
+                order?.category?.translations,
+                order?.category?.name || t("serviceOrder"),
+              )}
             </Text>
             <View
               style={[
@@ -152,7 +161,7 @@ export default function ServiceDetailsCard({
               ]}
             >
               <Text style={[styles.statusText, { color: statusStyle.color }]}>
-                {order.status}
+                {getLocalizedOrderStatus(order.status)}
               </Text>
             </View>
           </View>
@@ -235,7 +244,9 @@ export default function ServiceDetailsCard({
         <View style={styles.detailsRow}>
           <Text style={styles.label}>{t("paymentStatus")}</Text>
           <Text style={styles.paymentStatus} numberOfLines={1}>
-            {order?.paymentStatus || order?.payment_status}
+            {getLocalizedPaymentStatus(
+              order?.paymentStatus || order?.payment_status,
+            )}
           </Text>
         </View>
         {showRatingSection && (

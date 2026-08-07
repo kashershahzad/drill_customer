@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { startCheckout } from "checkout-react-native";
 import type { CheckoutCallbacks } from "checkout-react-native";
+import { startCheckout } from "checkout-react-native";
 import CryptoJS from "crypto-js";
 import { Platform } from "react-native";
 import {
@@ -60,46 +60,45 @@ export function toTapPreferredPayment(
   const normalized = (method || "").toLowerCase().trim();
   if (normalized === "google") return "google";
   if (normalized === "apple") return "apple";
-  if (normalized === "visa") return undefined;
-  if (normalized === "online") return undefined;
+  if (
+    normalized === "visa" ||
+    normalized === "card" ||
+    normalized === "online"
+  ) {
+    return "card";
+  }
   return undefined;
 }
 
 function resolveCheckoutPaymentPreferences(
   preferredPayment?: TapPreferredPayment,
 ) {
+  // Google Pay only — no card form
   if (preferredPayment === "google" && Platform.OS === "android") {
     return {
-      paymentType: "DEVICE",
-      supportedPaymentMethods: ["GOOGLE_PAY", ...TAP_CARD_METHODS],
+      paymentType: "DEVICE" as const,
+      supportedPaymentMethods: ["GOOGLE_PAY"],
       isApplePayAvailableOnClient: false,
       isGooglePayAvailableOnClient: true,
     };
   }
 
+  // Apple Pay only — no card form
   if (preferredPayment === "apple" && Platform.OS === "ios") {
     return {
-      paymentType: "DEVICE",
-      supportedPaymentMethods: ["APPLE_PAY", ...TAP_CARD_METHODS],
+      paymentType: "DEVICE" as const,
+      supportedPaymentMethods: ["APPLE_PAY"],
       isApplePayAvailableOnClient: true,
       isGooglePayAvailableOnClient: false,
     };
   }
 
-  if (preferredPayment === "card") {
-    return {
-      paymentType: "CARD",
-      supportedPaymentMethods: [...TAP_CARD_METHODS],
-      isApplePayAvailableOnClient: false,
-      isGooglePayAvailableOnClient: false,
-    };
-  }
-
+  // Visa / card / default — card entry only
   return {
-    paymentType: "ALL",
-    supportedPaymentMethods: "ALL" as const,
-    isApplePayAvailableOnClient: Platform.OS === "ios",
-    isGooglePayAvailableOnClient: Platform.OS === "android",
+    paymentType: "CARD" as const,
+    supportedPaymentMethods: [...TAP_CARD_METHODS],
+    isApplePayAvailableOnClient: false,
+    isGooglePayAvailableOnClient: false,
   };
 }
 
@@ -210,7 +209,9 @@ function formatTapCheckoutError(error: string): string {
   try {
     const parsed = JSON.parse(error) as { message?: string; code?: string };
     if (parsed.message) {
-      return parsed.code ? `${parsed.message} (${parsed.code})` : parsed.message;
+      return parsed.code
+        ? `${parsed.message} (${parsed.code})`
+        : parsed.message;
     }
   } catch {
     // plain string error from SDK
@@ -314,7 +315,11 @@ async function pollOrderPaymentStatus(orderId: string): Promise<boolean> {
       const response = await apiCall(formData);
       const order = response?.data?.[0];
       if (order?.payment_status === "paid") {
-        console.log("[Tap] order paid on backend (poll attempt", attempt + 1, ")");
+        console.log(
+          "[Tap] order paid on backend (poll attempt",
+          attempt + 1,
+          ")",
+        );
         return true;
       }
     } catch (e) {
@@ -468,7 +473,8 @@ function buildTapCheckoutConfig(
       alternativeCardInputs: { cardScanner: true, cardNFC: true },
     },
     isApplePayAvailableOnClient: paymentPreferences.isApplePayAvailableOnClient,
-    isGooglePayAvailableOnClient: paymentPreferences.isGooglePayAvailableOnClient,
+    isGooglePayAvailableOnClient:
+      paymentPreferences.isGooglePayAvailableOnClient,
   };
 }
 

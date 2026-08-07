@@ -1,16 +1,72 @@
 import Button from "@/components/button";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
+import { useAuth } from "~/contexts/AuthContext";
+import {
+  initializePushNotifications,
+  setupNotificationListeners,
+} from "~/utils/notification";
 import { ms, s, vs } from "~/utils/responsive";
 
+/**
+ * After verification, go straight to the app.
+ * Location is requested later only when booking (not as a login gate).
+ */
 export default function Verified() {
   const { t } = useTranslation();
-  const handleBrowse = () => {
-    router.push("/auth/access_location");
+  const { setUser, getPendingBooking, clearPendingBooking } = useAuth();
+  const [loading, setLoading] = useState(false);
+
+  const handleBrowse = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const userId = await AsyncStorage.getItem("user_id");
+      if (userId) {
+        await setUser(userId);
+        try {
+          await initializePushNotifications(userId);
+          setupNotificationListeners(() => {});
+        } catch (error) {
+          console.error("Error setting up notifications:", error);
+        }
+      }
+
+      const pending = await getPendingBooking();
+      if (pending) {
+        await clearPendingBooking();
+        if (pending.entry === "serviceType") {
+          router.replace({
+            pathname: "/booking/serviceType",
+            params: {
+              id: pending.id,
+              name: pending.name,
+              image: pending.image,
+            },
+          });
+        } else {
+          router.replace({
+            pathname: "/booking",
+            params: {
+              id: pending.id,
+              name: pending.name,
+              image: pending.image,
+            },
+          });
+        }
+        return;
+      }
+
+      router.replace("/(tabs)");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -28,7 +84,13 @@ export default function Verified() {
         </View>
       </View>
 
-      <Button title={t("verified.browseHome")} onPress={handleBrowse} />
+      <Button
+        title={
+          loading ? t("accessLocation.loading") : t("verified.browseHome")
+        }
+        onPress={handleBrowse}
+        disabled={loading}
+      />
     </SafeAreaView>
   );
 }

@@ -33,74 +33,91 @@ export default function AccessLocation() {
     const setupNotifications = async () => {
       try {
         const userId = await AsyncStorage.getItem("user_id");
-        if (!userId) {
-          return;
-        }
-
+        if (!userId) return;
         await initializePushNotifications(userId);
       } catch (error) {
         console.error("Error setting up notifications:", error);
       }
     };
 
-    const handleNotificationPress = (data: any) => {};
-
     setupNotifications();
-
-    const unsubscribe = setupNotificationListeners(handleNotificationPress);
-
-    return () => {
-      unsubscribe();
-    };
+    const unsubscribe = setupNotificationListeners(() => {});
+    return () => unsubscribe();
   }, []);
+
+  const finishAndNavigate = async () => {
+    const userId = await AsyncStorage.getItem("user_id");
+    if (userId) await setUser(userId);
+
+    const pending = await getPendingBooking();
+    if (pending) {
+      await clearPendingBooking();
+      if (pending.entry === "serviceType") {
+        router.replace({
+          pathname: "/booking/serviceType",
+          params: {
+            id: pending.id,
+            name: pending.name,
+            image: pending.image,
+          },
+        });
+      } else {
+        router.replace({
+          pathname: "/booking",
+          params: {
+            id: pending.id,
+            name: pending.name,
+            image: pending.image,
+          },
+        });
+      }
+      return;
+    }
+
+    router.replace("/(tabs)");
+  };
+
+  const handleSkip = async () => {
+    setLoading(true);
+    try {
+      await finishAndNavigate();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLocation = async () => {
     setLoading(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const existing = await Location.getForegroundPermissionsAsync();
+      let status = existing.status;
+
+      // Only prompt if not already decided — don't re-pressure after deny
+      if (status === "undetermined") {
+        const requested = await Location.requestForegroundPermissionsAsync();
+        status = requested.status;
+      }
 
       if (status !== "granted") {
         Alert.alert(
           t("accessLocation.permissionDenied"),
-          t("accessLocation.permissionRequired"),
+          t("accessLocation.continueWithoutLocationMessage"),
+          [
+            {
+              text: t("accessLocation.continueWithoutLocation"),
+              onPress: () => {
+                void handleSkip();
+              },
+            },
+          ],
         );
-        setLoading(false);
         return;
       }
 
       const { latitude, longitude } = await getDeviceCoordinates();
-
       await AsyncStorage.setItem("latitude", String(latitude));
       await AsyncStorage.setItem("longitude", String(longitude));
-
-      const userId = await AsyncStorage.getItem("user_id");
-      if (userId) await setUser(userId);
-
-      const pending = await getPendingBooking();
-      if (pending) {
-        await clearPendingBooking();
-        if (pending.entry === "serviceType") {
-          router.replace({
-            pathname: "/booking/serviceType",
-            params: {
-              id: pending.id,
-              name: pending.name,
-              image: pending.image,
-            },
-          });
-        } else {
-          router.replace({
-            pathname: "/booking",
-            params: {
-              id: pending.id,
-              name: pending.name,
-              image: pending.image,
-            },
-          });
-        }
-      } else {
-        router.replace("/(tabs)");
-      }
+      await finishAndNavigate();
     } catch (error: any) {
       console.error("Error fetching location:", error);
 
@@ -108,11 +125,26 @@ export default function AccessLocation() {
         Alert.alert(
           t("accessLocation.error"),
           t("accessLocation.locationServicesDisabled"),
+          [
+            {
+              text: t("accessLocation.continueWithoutLocation"),
+              onPress: () => {
+                void handleSkip();
+              },
+            },
+          ],
         );
         return;
       }
 
-      Alert.alert(t("accessLocation.error"), t("accessLocation.errorMessage"));
+      Alert.alert(t("accessLocation.error"), t("accessLocation.errorMessage"), [
+        {
+          text: t("accessLocation.continueWithoutLocation"),
+          onPress: () => {
+            void handleSkip();
+          },
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -128,7 +160,6 @@ export default function AccessLocation() {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* Image & Text Content */}
       <View style={styles.content}>
         <Image
           source={require("@/assets/images/location.png")}
@@ -157,6 +188,15 @@ export default function AccessLocation() {
           onPress={handleLocation}
           disabled={loading}
         />
+        <TouchableOpacity
+          style={styles.skipButton}
+          onPress={handleSkip}
+          disabled={loading}
+        >
+          <Text style={styles.skipText}>
+            {t("accessLocation.continueWithoutLocation")}
+          </Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -227,5 +267,15 @@ const styles = StyleSheet.create({
     width: "100%",
     alignItems: "center",
     paddingTop: vs(16),
+    gap: vs(12),
+  },
+  skipButton: {
+    paddingVertical: vs(8),
+  },
+  skipText: {
+    fontSize: ms(14),
+    fontFamily: FONTS.medium,
+    color: Colors.secondary300,
+    textAlign: "center",
   },
 });

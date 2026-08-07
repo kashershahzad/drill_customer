@@ -4,7 +4,7 @@ import { Image, StyleSheet, Text, View } from "react-native";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { OrderType } from "~/types/dataTypes";
-import { formatAppTime } from "~/utils/locale";
+import { formatAppTime, getLocalizedPaymentStatus } from "~/utils/locale";
 import {
   formatExtraStatusLabel,
   getOrderExtrasNetSummary,
@@ -491,7 +491,7 @@ const OrderDetailsSection = ({
       <View style={styles.rowBetween}>
         <Text style={styles.grayText}>{t("paymentStatus")}:</Text>
         <Text style={styles.grayText}>
-          {order.payment_status || t("pending")}
+          {getLocalizedPaymentStatus(order.payment_status, t("pending"))}
         </Text>
       </View>
 

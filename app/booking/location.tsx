@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -107,7 +108,14 @@ export default function LocationScreen() {
 
   useEffect(() => {
     (async () => {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const existing = await Location.getForegroundPermissionsAsync();
+      let status = existing.status;
+
+      if (status === "undetermined") {
+        const requested = await Location.requestForegroundPermissionsAsync();
+        status = requested.status;
+      }
+
       if (status !== "granted") {
         setSelectedLocation({
           latitude: parseFloat(DEFAULT_LOCATION.latitude),
@@ -215,6 +223,31 @@ export default function LocationScreen() {
 
   const centerToUserLocation = async () => {
     try {
+      const existing = await Location.getForegroundPermissionsAsync();
+      let status = existing.status;
+
+      if (status === "undetermined") {
+        const requested = await Location.requestForegroundPermissionsAsync();
+        status = requested.status;
+      }
+
+      if (status !== "granted") {
+        Alert.alert(
+          t("booking.locationError"),
+          t("booking.openSettingsForLocation"),
+          [
+            { text: t("cancel"), style: "cancel" },
+            {
+              text: t("booking.openSettings"),
+              onPress: () => {
+                void Linking.openSettings();
+              },
+            },
+          ],
+        );
+        return;
+      }
+
       const location = await Location.getCurrentPositionAsync({});
       mapRef.current?.animateToRegion({
         latitude: location.coords.latitude,
