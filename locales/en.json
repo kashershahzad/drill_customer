@@ -185,7 +185,7 @@
     "accountStatus": "Account Status",
     "verified": "Verified",
     "unverified": "Unverified",
-    "wallet": "Wallet",
+    "wallet":"Transactions",
     "card": "Card",
     "rateUs": "Rate Us",
     "aboutApp": "About App",
@@ -260,6 +260,7 @@
     "instantServiceDesc": "Get service immediately when available",
     "scheduleService": "Schedule Service",
     "scheduleServiceDesc": "Choose your preferred date and time",
+    "scheduleComingSoon": "Scheduled bookings will be available soon.",
     "scheduleDetails": "Schedule Details",
     "selectDate": "Select Date",
     "selectTime": "Select Time",
@@ -312,6 +313,8 @@
     "cardSaved": "Card Saved",
     "locationRequired": "Location is required. Please select a location.",
     "locationRequiredGoBack": "Location is required. Please go back and select a location.",
+    "serviceAreaTitle": "Service unavailable",
+    "serviceAreaOnlyMadinah": "Comming soon in your region",
     "orderIdNotReceived": "Order ID not received from server",
     "fetchingAddress": "Fetching address...",
     "scheduledService": "Scheduled Service",
@@ -438,6 +441,7 @@
   },
   "packages": {
     "packages": "Packages",
+    "comingSoon": "Coming Soon",
     "noPackagesAvailable": "No packages available",
     "unableToFetch": "Unable to fetch service packages"
   },
@@ -447,7 +451,7 @@
     "somethingWentWrong": "Something went wrong. Please try again."
   },
   "wallet": {
-    "title": "Wallet",
+    "title": "Transactions",
     "availableBalance": "Available Balance",
     "add": "Add",
     "transactionsHistory": "Transactions History",
@@ -481,7 +485,7 @@
     "aboutApp": "About This App",
     "appDescription": "This app is designed to provide fast and reliable home services, including plumbing, electrical work, cleaning, and more. We aim to make it simple and convenient to book trusted professionals right from your phone.",
     "appVersion": "App Version",
-    "version": "v1.1",
+    "version": "v1.2",
     "developedBy": "Developed by",
     "developer": "Your Servo",
     "support": "Support",

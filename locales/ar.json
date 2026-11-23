@@ -260,6 +260,7 @@
     "instantServiceDesc": "احصل على الخدمة فوراً عند التوفر",
     "scheduleService": "خدمة مجدولة",
     "scheduleServiceDesc": "اختر التاريخ والوقت المفضل لديك",
+    "scheduleComingSoon": "الحجز المجدول سيكون متاحاً قريباً.",
     "scheduleDetails": "تفاصيل الجدولة",
     "selectDate": "اختر التاريخ",
     "selectTime": "اختر الوقت",
@@ -312,6 +313,8 @@
     "cardSaved": "تم حفظ البطاقة",
     "locationRequired": "الموقع مطلوب. يرجى اختيار موقع.",
     "locationRequiredGoBack": "الموقع مطلوب. يرجى العودة واختيار موقع.",
+    "serviceAreaTitle": "الخدمة غير متاحة",
+    "serviceAreaOnlyMadinah": "قريباً في منطقتك",
     "orderIdNotReceived": "لم يتم استلام رقم الطلب من الخادم",
     "fetchingAddress": "جاري جلب العنوان...",
     "scheduledService": "خدمة مجدولة",
@@ -438,6 +441,7 @@
   },
   "packages": {
     "packages": "الباقات",
+    "comingSoon": "قريباً",
     "noPackagesAvailable": "لا توجد باقات متاحة",
     "unableToFetch": "تعذر جلب باقات الخدمة"
   },
@@ -481,7 +485,7 @@
     "aboutApp": "حول هذا التطبيق",
     "appDescription": "تم تصميم هذا التطبيق لتوفير خدمات منزلية سريعة وموثوقة، بما في ذلك السباكة والأعمال الكهربائية والتنظيف والمزيد. نهدف إلى جعل حجز المحترفين الموثوقين بسيطاً ومريحاً مباشرة من هاتفك.",
     "appVersion": "إصدار التطبيق",
-    "version": "v1.1",
+    "version": "v1.2",
     "developedBy": "تم التطوير بواسطة",
     "developer": "Your Servo",
     "support": "الدعم",

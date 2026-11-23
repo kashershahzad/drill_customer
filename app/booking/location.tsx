@@ -20,8 +20,11 @@ import MapView, { Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getInputFontSize, inputFieldStyles } from "~/components/inputfield";
 import { FONTS } from "~/constants/Fonts";
-import { DEFAULT_LOCATION } from "~/utils/location";
+import { DEFAULT_LOCATION, isWithinServiceArea } from "~/utils/location";
 import { ms, s, vs } from "~/utils/responsive";
+
+const MADINA_LAT = parseFloat(DEFAULT_LOCATION.latitude);
+const MADINA_LNG = parseFloat(DEFAULT_LOCATION.longitude);
 
 export default function LocationScreen() {
   const navigation = useNavigation();
@@ -35,19 +38,58 @@ export default function LocationScreen() {
     latitude?: number;
     longitude?: number;
   }>({
-    address: (params?.location as string) || "",
-    latitude: params?.latitude
-      ? parseFloat(params.latitude as string)
-      : undefined,
-    longitude: params?.longitude
-      ? parseFloat(params.longitude as string)
-      : undefined,
+    address: DEFAULT_LOCATION.address,
+    latitude: MADINA_LAT,
+    longitude: MADINA_LNG,
   });
+
+  const inServiceArea = isWithinServiceArea(
+    selectedLocation.latitude,
+    selectedLocation.longitude,
+  );
+
+  const snapToMadina = (showAlert = false) => {
+    setSelectedLocation({
+      latitude: MADINA_LAT,
+      longitude: MADINA_LNG,
+      address: DEFAULT_LOCATION.address,
+    });
+    mapRef.current?.animateToRegion({
+      latitude: MADINA_LAT,
+      longitude: MADINA_LNG,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    });
+    if (showAlert) {
+      Alert.alert(
+        t("booking.serviceAreaTitle"),
+        t("booking.serviceAreaOnlyMadinah"),
+      );
+    }
+  };
+
+  const clearOutOfAreaStorage = async () => {
+    try {
+      await AsyncStorage.multiRemove(["latitude", "longitude"]);
+    } catch (error) {
+      console.error("Error clearing out-of-area location:", error);
+    }
+  };
 
   const fetchAddressFromCoords = async (
     latitude: number,
-    longitude: number
+    longitude: number,
   ) => {
+    if (!isWithinServiceArea(latitude, longitude)) {
+      setSelectedLocation((prev) => ({
+        ...prev,
+        latitude,
+        longitude,
+        address: t("booking.serviceAreaOnlyMadinah"),
+      }));
+      return;
+    }
+
     try {
       const geocode = await Location.reverseGeocodeAsync({
         latitude,
@@ -76,13 +118,20 @@ export default function LocationScreen() {
       if (geocode.length > 0) {
         const { latitude, longitude } = geocode[0];
 
+        if (!isWithinServiceArea(latitude, longitude)) {
+          Alert.alert(
+            t("booking.serviceAreaTitle"),
+            t("booking.serviceAreaOnlyMadinah"),
+          );
+          return;
+        }
+
         setSelectedLocation({
           address,
           latitude,
           longitude,
         });
 
-        // Animate map to the geocoded location
         mapRef.current?.animateToRegion({
           latitude,
           longitude,
@@ -92,15 +141,12 @@ export default function LocationScreen() {
       } else {
         Alert.alert(
           t("booking.locationError"),
-          t("booking.couldNotFindLocation")
+          t("booking.couldNotFindLocation"),
         );
       }
     } catch (error) {
       console.error("Failed to geocode address:", error);
-      Alert.alert(
-        t("error"),
-        t("booking.failedToFindAddress")
-      );
+      Alert.alert(t("error"), t("booking.failedToFindAddress"));
     } finally {
       setSearchingAddress(false);
     }
@@ -108,35 +154,24 @@ export default function LocationScreen() {
 
   useEffect(() => {
     (async () => {
-      const existing = await Location.getForegroundPermissionsAsync();
-      let status = existing.status;
-
-      if (status === "undetermined") {
-        const requested = await Location.requestForegroundPermissionsAsync();
-        status = requested.status;
-      }
-
-      if (status !== "granted") {
-        setSelectedLocation({
-          latitude: parseFloat(DEFAULT_LOCATION.latitude),
-          longitude: parseFloat(DEFAULT_LOCATION.longitude),
-          address: DEFAULT_LOCATION.address,
-        });
-        return;
-      }
-
-      // If we already have coordinates from params, use them
-      if (params?.latitude && params?.longitude) {
-        const latitude = parseFloat(params.latitude as string);
-        const longitude = parseFloat(params.longitude as string);
+      const applyInServiceLocation = async (
+        latitude: number,
+        longitude: number,
+        address?: string,
+      ) => {
+        if (!isWithinServiceArea(latitude, longitude)) {
+          await clearOutOfAreaStorage();
+          snapToMadina(false);
+          return false;
+        }
 
         setSelectedLocation({
           latitude,
           longitude,
-          address: (params?.location as string) || t("booking.fetchingAddress"),
+          address: address || t("booking.fetchingAddress"),
         });
 
-        if (!params?.location) {
+        if (!address) {
           fetchAddressFromCoords(latitude, longitude);
         }
 
@@ -146,79 +181,75 @@ export default function LocationScreen() {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         });
+        return true;
+      };
 
+      // Always start on Madina, then only keep coords that are inside service area
+      snapToMadina(false);
+
+      const existing = await Location.getForegroundPermissionsAsync();
+      let status = existing.status;
+
+      if (status === "undetermined") {
+        const requested = await Location.requestForegroundPermissionsAsync();
+        status = requested.status;
+      }
+
+      if (status !== "granted") {
         return;
       }
 
-      // Try to get from AsyncStorage first
+      if (params?.latitude && params?.longitude) {
+        const latitude = parseFloat(params.latitude as string);
+        const longitude = parseFloat(params.longitude as string);
+        await applyInServiceLocation(
+          latitude,
+          longitude,
+          (params?.location as string) || undefined,
+        );
+        return;
+      }
+
       try {
         const storedLat = await AsyncStorage.getItem("latitude");
         const storedLng = await AsyncStorage.getItem("longitude");
-        
+
         if (storedLat && storedLng) {
           const latitude = parseFloat(storedLat);
           const longitude = parseFloat(storedLng);
-          
-          // Validate parsed values
+
           if (!isNaN(latitude) && !isNaN(longitude)) {
-            setSelectedLocation({
-              latitude,
-              longitude,
-              address: t("booking.fetchingAddress"),
-            });
-            
-            fetchAddressFromCoords(latitude, longitude);
-            
-            mapRef.current?.animateToRegion({
-              latitude,
-              longitude,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
-            });
-            return;
+            if (await applyInServiceLocation(latitude, longitude)) {
+              return;
+            }
           }
         }
       } catch (error) {
         console.error("Error getting stored location:", error);
       }
 
-      // Otherwise get current location
       try {
         const location = await Location.getCurrentPositionAsync({});
         const { latitude, longitude } = location.coords;
-
-        setSelectedLocation({
-          latitude,
-          longitude,
-          address: t("booking.fetchingAddress"),
-        });
-
-        fetchAddressFromCoords(latitude, longitude);
-
-        mapRef.current?.animateToRegion({
-          latitude,
-          longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        });
+        await applyInServiceLocation(latitude, longitude);
       } catch (error) {
         console.error("Error getting current location:", error);
-        setSelectedLocation({
-          latitude: parseFloat(DEFAULT_LOCATION.latitude),
-          longitude: parseFloat(DEFAULT_LOCATION.longitude),
-          address: DEFAULT_LOCATION.address,
-        });
       }
     })();
   }, []);
 
   const handleRegionChange = (region: Region) => {
+    const inside = isWithinServiceArea(region.latitude, region.longitude);
     setSelectedLocation({
       latitude: region.latitude,
       longitude: region.longitude,
-      address: t("booking.fetchingAddress"),
+      address: inside
+        ? t("booking.fetchingAddress")
+        : t("booking.serviceAreaOnlyMadinah"),
     });
-    fetchAddressFromCoords(region.latitude, region.longitude);
+    if (inside) {
+      fetchAddressFromCoords(region.latitude, region.longitude);
+    }
   };
 
   const centerToUserLocation = async () => {
@@ -249,6 +280,20 @@ export default function LocationScreen() {
       }
 
       const location = await Location.getCurrentPositionAsync({});
+      if (
+        !isWithinServiceArea(
+          location.coords.latitude,
+          location.coords.longitude,
+        )
+      ) {
+        Alert.alert(
+          t("booking.serviceAreaTitle"),
+          t("booking.serviceAreaOnlyMadinah"),
+        );
+        snapToMadina(false);
+        return;
+      }
+
       mapRef.current?.animateToRegion({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -281,6 +326,19 @@ export default function LocationScreen() {
       !selectedLocation.longitude
     ) {
       Alert.alert(t("error"), t("booking.pleaseSelectValidLocation"));
+      return;
+    }
+
+    if (
+      !isWithinServiceArea(
+        selectedLocation.latitude,
+        selectedLocation.longitude,
+      )
+    ) {
+      Alert.alert(
+        t("booking.serviceAreaTitle"),
+        t("booking.serviceAreaOnlyMadinah"),
+      );
       return;
     }
 
@@ -376,36 +434,44 @@ export default function LocationScreen() {
             ref={mapRef}
             style={styles.map}
             initialRegion={{
-              latitude: selectedLocation.latitude || 24.7136, // Riyadh, Saudi Arabia default
-              longitude: selectedLocation.longitude || 46.6753,
-              latitudeDelta: 0.01,
-              longitudeDelta: 0.01,
+              latitude: MADINA_LAT,
+              longitude: MADINA_LNG,
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
             }}
             onRegionChangeComplete={handleRegionChange}
             showsUserLocation={true}
-            showsMyLocationButton={true}
+            showsMyLocationButton={false}
           />
           {/* Fixed Marker Icon */}
           <Ionicons
             name="location-sharp"
             size={32}
-            color={Colors.primary}
+            color={inServiceArea ? Colors.primary : "#D32F2F"}
             style={styles.markerFixed}
           />
         </View>
+
+        {!inServiceArea && (
+          <View style={styles.warningContainer}>
+            <Text style={styles.warningText}>
+              {t("booking.serviceAreaOnlyMadinah")}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.addressContainer}>
           <Text style={styles.addressTitle}>{t("booking.selectedAddress")}</Text>
           <Text style={styles.addressText}>
             {selectedLocation.address || t("booking.noLocationSelected")}
           </Text>
-          {selectedLocation.latitude && selectedLocation.longitude && (
+          {/* {selectedLocation.latitude && selectedLocation.longitude && (
             <Text style={styles.coordsText}>
               {`Lat: ${selectedLocation.latitude.toFixed(
                 6
               )}, Lng: ${selectedLocation.longitude.toFixed(6)}`}
             </Text>
-          )}
+          )} */}
         </View>
       </ScrollView>
 
@@ -421,6 +487,7 @@ export default function LocationScreen() {
           title={t("booking.confirmLocation")}
           onPress={handleConfirm}
           disabled={
+            !inServiceArea ||
             !selectedLocation.address ||
             !selectedLocation.latitude ||
             !selectedLocation.longitude
@@ -452,6 +519,18 @@ const styles = StyleSheet.create({
   addressTitle: { fontSize: ms(17), fontFamily: FONTS.medium },
   addressText: { color: Colors.secondary300, marginTop: vs(4), fontSize: ms(13) },
   coordsText: { color: Colors.secondary300, marginTop: vs(4), fontSize: ms(11), fontStyle: "italic" },
+  warningContainer: {
+    backgroundColor: "#FFEBEE",
+    padding: s(12),
+    borderRadius: ms(10),
+    marginTop: vs(8),
+  },
+  warningText: {
+    color: "#D32F2F",
+    fontFamily: FONTS.medium,
+    fontSize: ms(13),
+    textAlign: "center",
+  },
   searchContainer: { marginBottom: vs(14) },
   input: {
     ...inputFieldStyles.field,

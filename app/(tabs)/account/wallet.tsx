@@ -1,6 +1,4 @@
-import Button from "@/components/button";
 import Header from "@/components/header";
-import Seprator from "@/components/seprator";
 import TransactionCard from "@/components/transaction_card";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -11,13 +9,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
-  View,
+  TouchableOpacity
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { formatAppDate, formatAppTime } from "~/utils/locale";
+import { ms, s, vs } from "~/utils/responsive";
 
 const { width } = Dimensions.get("window");
 
@@ -61,10 +58,34 @@ const Wallet = () => {
   ];
 
   const chartData = [
-    { value: 20, label: formatAppDate(new Date(2024, 0, 1), { day: "2-digit", month: "short" }) },
-    { value: 5, label: formatAppDate(new Date(2024, 0, 10), { day: "2-digit", month: "short" }) },
-    { value: 59, label: formatAppDate(new Date(2024, 0, 20), { day: "2-digit", month: "short" }) },
-    { value: 10, label: formatAppDate(new Date(2024, 0, 30), { day: "2-digit", month: "short" }) },
+    {
+      value: 20,
+      label: formatAppDate(new Date(2024, 0, 1), {
+        day: "2-digit",
+        month: "short",
+      }),
+    },
+    {
+      value: 5,
+      label: formatAppDate(new Date(2024, 0, 10), {
+        day: "2-digit",
+        month: "short",
+      }),
+    },
+    {
+      value: 59,
+      label: formatAppDate(new Date(2024, 0, 20), {
+        day: "2-digit",
+        month: "short",
+      }),
+    },
+    {
+      value: 10,
+      label: formatAppDate(new Date(2024, 0, 30), {
+        day: "2-digit",
+        month: "short",
+      }),
+    },
   ];
 
   const handleAdd = () => {
@@ -104,7 +125,7 @@ const Wallet = () => {
 
         <Seprator /> */}
 
-        <View style={styles.balanceSection}>
+        {/* <View style={styles.balanceSection}>
           <View>
             <Text style={styles.textSecondary}>{t("wallet.availableBalance")}</Text>
             <Text style={styles.availableBalance}>{t("wallet.sar")} 13,455.23</Text>
@@ -114,13 +135,15 @@ const Wallet = () => {
           </View>
         </View>
 
-        <Seprator />
+        <Seprator /> */}
 
         <TouchableOpacity
           style={styles.transactionHeader}
           onPress={() => setShowTransactions(!showTransactions)}
         >
-          <Text style={styles.transactionTitle}>{t("wallet.transactionsHistory")}</Text>
+          <Text style={styles.transactionTitle}>
+            {t("wallet.transactionsHistory")}
+          </Text>
           <Ionicons
             name={showTransactions ? "chevron-up" : "chevron-down"}
             size={20}
@@ -146,16 +169,50 @@ const Wallet = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "white" },
-  scrollContainer: { paddingHorizontal: s(16), paddingTop: vs(8), paddingBottom: vs(80) },
-  chartSection: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: vs(14) },
+  scrollContainer: {
+    paddingHorizontal: s(16),
+    paddingTop: vs(8),
+    paddingBottom: vs(80),
+  },
+  chartSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: vs(14),
+  },
   rowCenter: { flexDirection: "row", alignItems: "center", gap: s(7) },
-  textSecondary: { color: "#6B7280", fontSize: ms(17), fontFamily: FONTS.semiBold },
-  totalExpense: { color: "#6B7280", fontSize: ms(19), fontFamily: FONTS.medium },
+  textSecondary: {
+    color: "#6B7280",
+    fontSize: ms(17),
+    fontFamily: FONTS.semiBold,
+  },
+  totalExpense: {
+    color: "#6B7280",
+    fontSize: ms(19),
+    fontFamily: FONTS.medium,
+  },
   textGray: { color: "#9CA3AF", fontSize: ms(13), fontFamily: FONTS.semiBold },
-  balanceSection: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  availableBalance: { color: "#6B7280", fontSize: ms(22), fontFamily: FONTS.semiBold },
-  transactionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: vs(14) },
-  transactionTitle: { fontFamily: FONTS.bold, fontSize: ms(17), color: "#6B7280" },
+  balanceSection: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  availableBalance: {
+    color: "#6B7280",
+    fontSize: ms(22),
+    fontFamily: FONTS.semiBold,
+  },
+  transactionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: vs(14),
+  },
+  transactionTitle: {
+    fontFamily: FONTS.bold,
+    fontSize: ms(17),
+    color: "#6B7280",
+  },
 });
 
 export default Wallet;

@@ -1,5 +1,5 @@
-import Appwallet from "@/assets/images/appwallet.png";
 import ApplePay from "@/assets/images/applepay.png";
+import Appwallet from "@/assets/images/appwallet.png";
 import Cashonpay from "@/assets/images/cop.png";
 import Visa from "@/assets/images/visa.png";
 import Button from "@/components/button";
@@ -26,6 +26,7 @@ import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
 import { BOOKING_PAY_LATER_KEY } from "~/utils/booking";
+import { isWithinServiceArea } from "~/utils/location";
 import { ms, s, vs } from "~/utils/responsive";
 
 interface Package {
@@ -40,9 +41,6 @@ export default function Booking2Screen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams();
 
-  // Payment methods - IDs are used for backend, names are translated for display
-
-  // State for packages and selections
   const [packages, setPackages] = useState<Package[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
@@ -61,7 +59,6 @@ export default function Booking2Screen() {
 
   const categoryId = String(params.id || "");
 
-  // Fetch available packages for selected category
   useEffect(() => {
     if (categoryId) {
       fetchAvailablePlans(categoryId);
@@ -75,11 +72,8 @@ export default function Booking2Screen() {
       formData.append("table_name", "plans");
       formData.append("cat_id", catId);
 
-      console.log("catId", catId);
-
       const response = await apiCall(formData);
-      if (response && response.data) {
-        // Transform the response to match Package interface
+      if (response && Array.isArray(response.data) && response.data.length > 0) {
         const transformedPlans = response.data.map((plan: any) => ({
           id: plan.id,
           name: plan.name,
@@ -88,6 +82,8 @@ export default function Booking2Screen() {
           features: plan.features ? JSON.parse(plan.features) : [],
         }));
         setPackages(transformedPlans);
+      } else {
+        setPackages([]);
       }
     } catch (error) {
       console.error("Error fetching plans:", error);
@@ -96,7 +92,7 @@ export default function Booking2Screen() {
   };
 
   const proceedToConfirm = async (payLater = false) => {
-    if (!selectedPackage) {
+    if (packages.length > 0 && !selectedPackage) {
       Alert.alert(
         t("booking.selectPackageRequired"),
         t("booking.pleaseSelectPackage"),
@@ -114,6 +110,7 @@ export default function Booking2Screen() {
 
     let finalLat = params.latitude;
     let finalLng = params.longitude;
+    const finalLocation = params.location;
 
     if (!finalLat || !finalLng) {
       try {
@@ -126,8 +123,16 @@ export default function Booking2Screen() {
       }
     }
 
-    if (!finalLat || !finalLng) {
+    if (!finalLat || !finalLng || !finalLocation) {
       Alert.alert(t("error"), t("booking.locationRequiredGoBack"));
+      return;
+    }
+
+    if (!isWithinServiceArea(finalLat as string, finalLng as string)) {
+      Alert.alert(
+        t("booking.serviceAreaTitle"),
+        t("booking.serviceAreaOnlyMadinah"),
+      );
       return;
     }
 
@@ -150,7 +155,7 @@ export default function Booking2Screen() {
         id: params.id,
         name: params.name,
         image: params.image,
-        location: params.location,
+        location: finalLocation,
         selectedImage: params.selectedImage,
         description: params.description,
         latitude: finalLat,
@@ -158,10 +163,10 @@ export default function Booking2Screen() {
         service_type: params.service_type,
         schedule_date: params.schedule_date,
         schedule_time: params.schedule_time,
-        packageId: selectedPackage.id,
-        packageName: selectedPackage.name,
-        packageHours: selectedPackage.hours,
-        packagePrice: selectedPackage.price,
+        packageId: selectedPackage?.id || "",
+        packageName: selectedPackage?.name || "",
+        packageHours: selectedPackage?.hours ?? "",
+        packagePrice: selectedPackage?.price ?? "0",
         paymentMethod: payLater
           ? t("later")
           : selectedPaymentMethod?.name || "",
@@ -185,45 +190,47 @@ export default function Booking2Screen() {
           <Header backBtn={true} title={t("booking.bookService")} />
           <Stepper step={true} />
 
-          {/* Select Package */}
-          <Text style={styles.sectionTitle}>{t("booking.selectpackage")}</Text>
-          {packages.map((pkg) => (
-            <TouchableOpacity
-              key={pkg.id}
-              onPress={() => setSelectedPackage(pkg)}
-              style={[
-                styles.packageCard,
-                selectedPackage?.id === pkg.id && styles.selectedPackageCard,
-              ]}
-            >
-              <View style={styles.rowBetween}>
-                <View>
-                  <Text style={styles.packageName}>{pkg.name}</Text>
-                  <Text style={styles.packageDetails}>
-                    {pkg.hours} {t("booking.hoursPackage")} {pkg.price}
-                  </Text>
-                </View>
-                <View style={styles.radioOuter}>
-                  {selectedPackage?.id === pkg.id && (
-                    <View style={styles.radioInner} />
-                  )}
-                </View>
-              </View>
-              {selectedPackage?.id === pkg.id && pkg.features && (
-                <>
-                  <DashedSeparator />
-                  {pkg.features.map((feature, index) => (
-                    <View key={index} style={styles.featureItem}>
-                      <Text style={styles.bulletPoint}>•</Text>
-                      <Text style={styles.featureText}>{feature}</Text>
+          {packages.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>{t("booking.selectpackage")}</Text>
+              {packages.map((pkg) => (
+                <TouchableOpacity
+                  key={pkg.id}
+                  onPress={() => setSelectedPackage(pkg)}
+                  style={[
+                    styles.packageCard,
+                    selectedPackage?.id === pkg.id && styles.selectedPackageCard,
+                  ]}
+                >
+                  <View style={styles.rowBetween}>
+                    <View>
+                      <Text style={styles.packageName}>{pkg.name}</Text>
+                      <Text style={styles.packageDetails}>
+                        {pkg.hours} {t("booking.hoursPackage")} {pkg.price}
+                      </Text>
                     </View>
-                  ))}
-                </>
-              )}
-            </TouchableOpacity>
-          ))}
-
-          <Seprator />
+                    <View style={styles.radioOuter}>
+                      {selectedPackage?.id === pkg.id && (
+                        <View style={styles.radioInner} />
+                      )}
+                    </View>
+                  </View>
+                  {selectedPackage?.id === pkg.id && pkg.features && (
+                    <>
+                      <DashedSeparator />
+                      {pkg.features.map((feature, index) => (
+                        <View key={index} style={styles.featureItem}>
+                          <Text style={styles.bulletPoint}>•</Text>
+                          <Text style={styles.featureText}>{feature}</Text>
+                        </View>
+                      ))}
+                    </>
+                  )}
+                </TouchableOpacity>
+              ))}
+              <Seprator />
+            </>
+          )}
 
           <Text style={styles.sectionTitle}>{t("booking.paymentmethod")}</Text>
 
@@ -246,7 +253,6 @@ export default function Booking2Screen() {
           ))}
         </ScrollView>
 
-        {/* Buttons */}
         <View style={styles.buttonRow}>
           <Button
             title={t("later")}
@@ -340,5 +346,4 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     fontFamily: FONTS.regular,
   },
-  marginBottom: { marginBottom: vs(12) },
 });

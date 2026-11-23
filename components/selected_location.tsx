@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FONTS } from "~/constants/Fonts";
+import { isWithinServiceArea } from "~/utils/location";
 import { ms, s, vs } from "~/utils/responsive";
 
 type Category = {
@@ -63,6 +64,16 @@ export default function SelectedLocation({
         const location = await LocationService.getCurrentPositionAsync({
           accuracy: LocationService.Accuracy.Balanced,
         });
+
+        if (
+          !isWithinServiceArea(
+            location.coords.latitude,
+            location.coords.longitude,
+          )
+        ) {
+          // Outside Madina — don't auto-fill; user must pick a Madina address.
+          return;
+        }
 
         const geocodedAddress = await reverseGeocodeLocation(
           location.coords.latitude,

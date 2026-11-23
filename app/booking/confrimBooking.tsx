@@ -27,6 +27,7 @@ import { FONTS } from "~/constants/Fonts";
 import { apiCall } from "~/utils/api";
 import { BOOKING_PAY_LATER_KEY } from "~/utils/booking";
 import { formatAppDate, formatAppTime } from "~/utils/locale";
+import { isWithinServiceArea } from "~/utils/location";
 import { ms, s, vs } from "~/utils/responsive";
 // import { createTapCharge } from "~/utils/tapPayment";
 import { startTapPayment, toTapPreferredPayment } from "~/utils/tapPayment";
@@ -155,6 +156,14 @@ export default function ConfirmBooking() {
 
     if (!customerLat || !customerLng) {
       Alert.alert(t("error"), t("booking.locationRequired"));
+      return null;
+    }
+
+    if (!isWithinServiceArea(customerLat, customerLng)) {
+      Alert.alert(
+        t("booking.serviceAreaTitle"),
+        t("booking.serviceAreaOnlyMadinah"),
+      );
       return null;
     }
 

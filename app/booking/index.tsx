@@ -10,16 +10,17 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
+import { isWithinServiceArea } from "~/utils/location";
 import { ms, s, vs } from "~/utils/responsive";
 
 export default function BookingScreen() {
@@ -118,6 +119,14 @@ export default function BookingScreen() {
 
     if (!selectedLocation || !finalLat || !finalLng) {
       Alert.alert(t("error"), t("booking.locationRequired"));
+      return;
+    }
+
+    if (!isWithinServiceArea(finalLat as string, finalLng as string)) {
+      Alert.alert(
+        t("booking.serviceAreaTitle"),
+        t("booking.serviceAreaOnlyMadinah"),
+      );
       return;
     }
 

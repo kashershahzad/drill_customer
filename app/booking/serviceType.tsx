@@ -17,15 +17,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "~/constants/Colors";
 import { FONTS } from "~/constants/Fonts";
-import { ms, s, vs } from "~/utils/responsive";
 import { formatAppDate, formatAppTime } from "~/utils/locale";
+import { ms, s, vs } from "~/utils/responsive";
 
 export default function ServiceTypeScreen() {
   const { t } = useTranslation();
   const params = useLocalSearchParams();
 
   const [serviceType, setServiceType] = useState<"instant" | "schedule">(
-    "instant"
+    "instant",
   );
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(new Date());
@@ -57,14 +57,12 @@ export default function ServiceTypeScreen() {
 
   const handleDateChange = (event: any, date?: Date) => {
     if (Platform.OS === "ios") {
-      // On iOS, only close picker when user confirms or cancels
       if (event.type === "dismissed") {
         setShowDatePicker(false);
       } else if (date) {
         setSelectedDate(date);
       }
     } else {
-      // On Android, close immediately after selection
       setShowDatePicker(false);
       if (date) {
         setSelectedDate(date);
@@ -74,14 +72,12 @@ export default function ServiceTypeScreen() {
 
   const handleTimeChange = (event: any, time?: Date) => {
     if (Platform.OS === "ios") {
-      // On iOS, only close picker when user confirms or cancels
       if (event.type === "dismissed") {
         setShowTimePicker(false);
       } else if (time) {
         setSelectedTime(time);
       }
     } else {
-      // On Android, close immediately after selection
       setShowTimePicker(false);
       if (time) {
         setSelectedTime(time);
@@ -91,31 +87,26 @@ export default function ServiceTypeScreen() {
 
   const handleContinue = () => {
     if (serviceType === "schedule" && !isDateValid()) {
-      return; // Don't proceed if date is invalid
+      return;
     }
 
     const navigationParams: any = {
-      // Pass through existing params
       id: params.id,
       name: params.name,
       image: params.image,
       service_type: serviceType,
     };
 
-    // Add schedule data if scheduled service
     if (serviceType === "schedule") {
-      // Use local date formatting to avoid timezone issues
       const year = selectedDate.getFullYear();
       const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
       const day = String(selectedDate.getDate()).padStart(2, "0");
       navigationParams.schedule_date = `${year}-${month}-${day}`;
 
-      // Use local time formatting to avoid timezone issues
       const hours = String(selectedTime.getHours()).padStart(2, "0");
       const minutes = String(selectedTime.getMinutes()).padStart(2, "0");
       const seconds = String(selectedTime.getSeconds()).padStart(2, "0");
       navigationParams.schedule_time = `${hours}:${minutes}:${seconds}`;
-
     }
 
     router.push({
@@ -143,9 +134,7 @@ export default function ServiceTypeScreen() {
           <View style={styles.content}>
             <Header backBtn={true} title={t("booking.selectServiceType")} />
 
-            <Text style={styles.title}>
-              {t("booking.howToBook")}
-            </Text>
+            <Text style={styles.title}>{t("booking.howToBook")}</Text>
             <Text style={styles.subtitle}>
               {t("booking.chooseServiceType")}
             </Text>
@@ -158,7 +147,9 @@ export default function ServiceTypeScreen() {
                   onPress={() => setServiceType("instant")}
                 />
                 <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>{t("booking.instantService")}</Text>
+                  <Text style={styles.optionTitle}>
+                    {t("booking.instantService")}
+                  </Text>
                   <Text style={styles.optionDescription}>
                     {t("booking.instantServiceDesc")}
                   </Text>
@@ -171,7 +162,9 @@ export default function ServiceTypeScreen() {
                   onPress={() => setServiceType("schedule")}
                 />
                 <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>{t("booking.scheduleService")}</Text>
+                  <Text style={styles.optionTitle}>
+                    {t("booking.scheduleService")}
+                  </Text>
                   <Text style={styles.optionDescription}>
                     {t("booking.scheduleServiceDesc")}
                   </Text>
@@ -179,14 +172,17 @@ export default function ServiceTypeScreen() {
               </View>
             </View>
 
-            {/* Schedule Fields - Only show when schedule is selected */}
             {serviceType === "schedule" && (
               <View style={styles.scheduleSection}>
-                <Text style={styles.sectionTitle}>{t("booking.scheduleDetails")}</Text>
+                <Text style={styles.sectionTitle}>
+                  {t("booking.scheduleDetails")}
+                </Text>
 
                 {/* Date Selection */}
                 <View style={styles.fieldContainer}>
-                  <Text style={styles.fieldLabel}>{t("booking.selectDate")}</Text>
+                  <Text style={styles.fieldLabel}>
+                    {t("booking.selectDate")}
+                  </Text>
                   <View
                     style={styles.dateTimeField}
                     onTouchEnd={() => setShowDatePicker(true)}
@@ -199,7 +195,9 @@ export default function ServiceTypeScreen() {
 
                 {/* Time Selection */}
                 <View style={styles.fieldContainer}>
-                  <Text style={styles.fieldLabel}>{t("booking.selectTime")}</Text>
+                  <Text style={styles.fieldLabel}>
+                    {t("booking.selectTime")}
+                  </Text>
                   <View
                     style={styles.dateTimeField}
                     onTouchEnd={() => setShowTimePicker(true)}
@@ -239,7 +237,9 @@ export default function ServiceTypeScreen() {
             />
             <View style={styles.pickerContainer}>
               <View style={styles.pickerHeader}>
-                <Text style={styles.pickerTitle}>{t("booking.selectDate")}</Text>
+                <Text style={styles.pickerTitle}>
+                  {t("booking.selectDate")}
+                </Text>
                 <TouchableOpacity
                   style={styles.closeButton}
                   onPress={() => setShowDatePicker(false)}
@@ -275,7 +275,9 @@ export default function ServiceTypeScreen() {
             />
             <View style={styles.pickerContainer}>
               <View style={styles.pickerHeader}>
-                <Text style={styles.pickerTitle}>{t("booking.selectTime")}</Text>
+                <Text style={styles.pickerTitle}>
+                  {t("booking.selectTime")}
+                </Text>
                 <TouchableOpacity
                   style={styles.closeButton}
                   onPress={() => setShowTimePicker(false)}
@@ -302,32 +304,128 @@ export default function ServiceTypeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { flex: 1, paddingHorizontal: s(16), paddingTop: vs(8) },
-  title: { fontSize: ms(22), fontFamily: FONTS.bold, color: Colors.secondary, marginBottom: vs(6), textAlign: "left" },
-  subtitle: { fontSize: ms(15), fontFamily: FONTS.regular, color: Colors.secondary, marginBottom: vs(24), textAlign: "left" },
+  title: {
+    fontSize: ms(22),
+    fontFamily: FONTS.bold,
+    color: Colors.secondary,
+    marginBottom: vs(6),
+    textAlign: "left",
+  },
+  subtitle: {
+    fontSize: ms(15),
+    fontFamily: FONTS.regular,
+    color: Colors.secondary,
+    marginBottom: vs(24),
+    textAlign: "left",
+  },
   section: { marginBottom: vs(20) },
-  optionContainer: { flexDirection: "row", alignItems: "center", backgroundColor: Colors.primary300, paddingHorizontal: s(14), paddingVertical: vs(14), borderRadius: ms(12), marginBottom: vs(10) },
+  optionContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.primary300,
+    paddingHorizontal: s(14),
+    paddingVertical: vs(14),
+    borderRadius: ms(12),
+    marginBottom: vs(10),
+  },
   optionContent: { flex: 1, marginLeft: s(12) },
-  optionTitle: { fontSize: ms(16), fontFamily: FONTS.semiBold, color: Colors.secondary, marginBottom: vs(4) },
-  optionDescription: { fontSize: ms(13), fontFamily: FONTS.regular, color: Colors.secondary },
-  scheduleSection: { backgroundColor: Colors.primary300, padding: s(16), borderRadius: ms(12), marginBottom: vs(20) },
-  sectionTitle: { fontSize: ms(17), fontFamily: FONTS.semiBold, color: Colors.secondary, marginBottom: vs(14) },
+  optionTitle: {
+    fontSize: ms(16),
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+    marginBottom: vs(4),
+  },
+  optionDescription: {
+    fontSize: ms(13),
+    fontFamily: FONTS.regular,
+    color: Colors.secondary,
+  },
+  scheduleSection: {
+    backgroundColor: Colors.primary300,
+    padding: s(16),
+    borderRadius: ms(12),
+    marginBottom: vs(20),
+  },
+  sectionTitle: {
+    fontSize: ms(17),
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+    marginBottom: vs(14),
+  },
   fieldContainer: { marginBottom: vs(14) },
-  fieldLabel: { fontSize: ms(15), fontFamily: FONTS.medium, color: Colors.secondary, marginBottom: vs(7) },
-  dateTimeField: { backgroundColor: Colors.white, padding: s(14), borderRadius: ms(8), borderWidth: 1, borderColor: Colors.secondary },
-  fieldText: { fontSize: ms(14), fontFamily: FONTS.regular, color: Colors.secondary },
-  errorText: { fontSize: ms(13), fontFamily: FONTS.regular, color: "red", textAlign: "center", marginTop: vs(7) },
+  fieldLabel: {
+    fontSize: ms(15),
+    fontFamily: FONTS.medium,
+    color: Colors.secondary,
+    marginBottom: vs(7),
+  },
+  dateTimeField: {
+    backgroundColor: Colors.white,
+    padding: s(14),
+    borderRadius: ms(8),
+    borderWidth: 1,
+    borderColor: Colors.secondary,
+  },
+  fieldText: {
+    fontSize: ms(14),
+    fontFamily: FONTS.regular,
+    color: Colors.secondary,
+  },
+  errorText: {
+    fontSize: ms(13),
+    fontFamily: FONTS.regular,
+    color: "red",
+    textAlign: "center",
+    marginTop: vs(7),
+  },
   buttonContainer: { paddingHorizontal: s(16), paddingVertical: vs(12) },
-  pickerOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 },
+  pickerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
   pickerBackdrop: { flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)" },
   pickerContainer: {
-    position: "absolute", bottom: 0, left: 0, right: 0,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: Colors.white,
-    borderTopLeftRadius: ms(20), borderTopRightRadius: ms(20),
-    padding: s(18), elevation: 10,
-    shadowColor: "#000", shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.25, shadowRadius: 8,
+    borderTopLeftRadius: ms(20),
+    borderTopRightRadius: ms(20),
+    padding: s(18),
+    elevation: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
-  pickerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: vs(14), paddingBottom: vs(10), borderBottomWidth: 1, borderBottomColor: Colors.primary300 },
-  pickerTitle: { fontSize: ms(17), fontFamily: FONTS.semiBold, color: Colors.secondary },
-  closeButton: { backgroundColor: Colors.primary, paddingHorizontal: s(14), paddingVertical: vs(7), borderRadius: ms(8) },
-  closeButtonText: { fontSize: ms(14), fontFamily: FONTS.semiBold, color: Colors.white },
+  pickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: vs(14),
+    paddingBottom: vs(10),
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.primary300,
+  },
+  pickerTitle: {
+    fontSize: ms(17),
+    fontFamily: FONTS.semiBold,
+    color: Colors.secondary,
+  },
+  closeButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: s(14),
+    paddingVertical: vs(7),
+    borderRadius: ms(8),
+  },
+  closeButtonText: {
+    fontSize: ms(14),
+    fontFamily: FONTS.semiBold,
+    color: Colors.white,
+  },
 });
